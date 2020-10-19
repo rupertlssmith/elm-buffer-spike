@@ -1,53 +1,68 @@
-module Buffer exposing (..)
+module Buffer exposing
+    ( empty, fromArray, fromList
+    , get, isEmpty, length, slice
+    , getFocus, set
+    , foldlSlice
+    )
+
+{-| Implements an efficient Buffer for text editing.
+
+
+# Make a Buffer
+
+@docs empty, fromArray, fromList
+
+
+# Query
+
+@docs get, isEmpty, length, slice
+
+
+# Manipulate
+
+@docs getFocus, set
+
+
+# Iterate
+
+@docs foldlSlice
+
+-}
 
 import Array exposing (Array)
 
 
-type alias ZippedArray a b =
+type alias Buffer a b =
     { head : Array a
-    , zip : b
-    , zipAt : Int
-    , tail : Array a
+    , zip :
+        Maybe
+            { val : b
+            , at : Int
+            , tail : Array a
+            }
     , length : Int
     , toZip : a -> b
     , toArray : b -> a
     }
 
 
-type alias UnzippedArray a b =
-    { array : Array a
-    , toZip : a -> b
-    , toArray : b -> a
-    }
+zipAt : Int -> Buffer a b -> Buffer a b
+zipAt =
+    Debug.todo "zipAt"
 
 
-type Buffer a b
-    = Zipped (ZippedArray a b)
-    | Unzipped (UnzippedArray a b)
 
-
-dezip : ZipArray a b -> Array a
-dezip =
-    Debug.log "dezip"
-
-
-zip : Array a -> ZipArray a b
-zip =
-    Debug.log "zip"
-
-
-rezip : ZipArray a b -> ZipArray a b
-rezip =
-    Debug.log "rezip"
+-- Make a Buffer
 
 
 empty : (a -> b) -> (b -> a) -> Buffer a b
 empty toZip toArray =
-    Unzipped
-        { array = Array.empty
-        , toZip = toZip
-        , toArray = toArray
-        }
+    { head = Array.empty
+    , zip = Nothing
+    , length = 0
+    , toZip = toZip
+    , toArray = toArray
+    }
 
 
 fromList : (a -> b) -> (b -> a) -> List a -> Buffer a b
