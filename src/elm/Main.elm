@@ -4,6 +4,7 @@ import Array exposing (Array)
 import Browser exposing (Document)
 import Browser.Dom exposing (Viewport)
 import Browser.Events
+import Buffer
 import Css
 import Css.Global
 import Html as H exposing (Attribute, Html)
@@ -205,37 +206,6 @@ global =
         , Css.flexDirection Css.row
         , Css.outline Css.none
         ]
-    , Css.Global.class "v-scroll-bar"
-        [ Css.position Css.absolute
-        , Css.overflowX Css.hidden
-        , Css.overflowY Css.scroll
-        , Css.px 0 |> Css.right
-        , Css.px 0 |> Css.top
-        , Css.px 0 |> Css.bottom
-        ]
-    , Css.Global.class "v-scroll-bar-inner"
-        [ Css.px 1 |> Css.minWidth
-        ]
-    , Css.Global.class "h-scroll-bar"
-        [ Css.position Css.absolute
-        , Css.overflowX Css.scroll
-        , Css.overflowY Css.hidden
-        , Css.px 0 |> Css.left
-        , Css.px 0 |> Css.right
-        , Css.px 0 |> Css.bottom
-        , Css.int 1 |> Css.zIndex
-        ]
-    , Css.Global.class "h-scroll-bar-inner"
-        [ Css.px 1 |> Css.minHeight
-        , Css.pct 1 |> Css.height
-        ]
-    , Css.Global.class "code-line-numbers"
-        [ Css.em 2 |> Css.minWidth
-        , Css.textAlign Css.right
-        , Css.displayFlex
-        , Css.flexDirection Css.column
-        , Css.property "user-select" "none"
-        ]
     , Css.Global.id "content-main"
         [ Css.position Css.relative
         , Css.property "flex" "1"
@@ -279,39 +249,6 @@ editorView model =
             [ viewContent model
             ]
         ]
-
-
-viewVScrollBar : Html Msg
-viewVScrollBar =
-    H.div
-        [ HA.class "v-scroll-bar"
-        , HE.on "scroll" scrollDecoder
-        ]
-        [ H.div [ HA.class "v-scroll-bar-inner" ] [] ]
-
-
-viewHScrollBar : Html Msg
-viewHScrollBar =
-    H.div
-        [ HA.class "h-scroll-bar"
-        , HE.on "scroll" scrollDecoder
-        ]
-        [ H.div [ HA.class "h-scroll-bar-inner" ] [] ]
-
-
-viewLineNumbers : Model -> Html Msg
-viewLineNumbers model =
-    H.div
-        [ HA.class "code-line-numbers"
-        ]
-        (List.range 1 (Array.length model.buffer)
-            |> List.map viewLineNumber
-        )
-
-
-viewLineNumber : Int -> Html Msg
-viewLineNumber n =
-    H.div [] [ H.text (String.fromInt n) ]
 
 
 viewContent : Model -> Html Msg
