@@ -118,7 +118,19 @@ If the `Buffer` does not hold data for this index, `Nothing` is returned.
 -}
 get : Int -> Buffer a b -> Maybe a
 get idx buffer =
-    Debug.todo "get"
+    case buffer.zip of
+        Nothing ->
+            Array.get idx buffer.head
+
+        Just zip ->
+            if idx < Array.length buffer.head then
+                Array.get idx buffer.head
+
+            else if idx == zip.at then
+                buffer.toArray zip.val |> Just
+
+            else
+                Array.get (idx - zip.at) zip.tail
 
 
 {-| Extracts a slice of data from the buffer, between the _from_ and _to_ indices
@@ -171,7 +183,7 @@ getFocus =
 
 This is the most efficient way to extract and map data from the buffer. For
 example, you would use this when rendering the visible contents of a `Buffer`
-to Html. The implementation does not create intermeidate data structures to hold
+to Html. The implementation does not create intermediate data structures to hold
 the extracted elements, and it only iterates over the range you specify.
 
 -}
