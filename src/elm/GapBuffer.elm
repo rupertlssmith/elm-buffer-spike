@@ -53,20 +53,27 @@ zipAt idx buffer =
     let
         dezipped =
             dezip buffer
+                |> Debug.log "dezipped"
+
+        _ =
+            Debug.log "idx" idx
+
+        _ =
+            Debug.log "buffer.length" buffer.length
     in
-    if idx < buffer.length then
+    if idx < 0 || idx >= buffer.length then
         dezipped
 
     else
         { dezipped
-            | head = Array.slice 0 (idx - 1) buffer.head
+            | head = Array.slice 0 idx dezipped.head
             , zip =
-                Array.get idx buffer.head
+                Array.get idx dezipped.head
                     |> Maybe.map
                         (\val ->
-                            { val = buffer.toZip val
+                            { val = dezipped.toZip val
                             , at = idx
-                            , tail = Array.slice (idx + 1) buffer.length buffer.head
+                            , tail = Array.slice (idx + 1) dezipped.length dezipped.head
                             }
                         )
         }
@@ -76,9 +83,17 @@ dezip : Buffer a b -> Buffer a b
 dezip buffer =
     case buffer.zip of
         Nothing ->
+            let
+                _ =
+                    Debug.log "dezip" "Nothing"
+            in
             buffer
 
         Just zip ->
+            let
+                _ =
+                    Debug.log "dezip" "Just"
+            in
             { buffer
                 | head =
                     Array.append
