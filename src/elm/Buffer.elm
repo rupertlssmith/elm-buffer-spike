@@ -47,8 +47,46 @@ type alias Buffer a b =
 
 
 zipAt : Int -> Buffer a b -> Buffer a b
-zipAt =
-    Debug.todo "zipAt"
+zipAt idx buffer =
+    let
+        dezipped =
+            dezip buffer
+    in
+    if idx < buffer.length then
+        dezipped
+
+    else
+        { dezipped
+            | head = Array.slice 0 (idx - 1) buffer.head
+            , zip =
+                Array.get idx buffer.head
+                    |> Maybe.map
+                        (\val ->
+                            { val = buffer.toZip val
+                            , at = idx
+                            , tail = Array.slice (idx + 1) buffer.length buffer.head
+                            }
+                        )
+        }
+
+
+dezip : Buffer a b -> Buffer a b
+dezip buffer =
+    case buffer.zip of
+        Nothing ->
+            buffer
+
+        Just zip ->
+            { buffer
+                | head =
+                    Array.append
+                        buffer.head
+                        (Array.append
+                            (Array.fromList [ buffer.toArray zip.val ])
+                            zip.tail
+                        )
+                , zip = Nothing
+            }
 
 
 
@@ -142,7 +180,41 @@ actual available range will be returned.
 -}
 slice : Int -> Int -> Buffer a b -> Array a
 slice from to buffer =
-    Debug.todo "slice"
+    let
+        intersects _ _ _ _ =
+            True
+    in
+    case buffer.zip of
+        Nothing ->
+            Array.slice from to buffer.head
+
+        Just zip ->
+            let
+                s1 =
+                    if intersects from to 0 buffer.head then
+                        Array.slice from to buffer.head :: []
+
+                    else
+                        []
+
+                s2 =
+                    if zip.at >= from && zip.at <= to then
+                        Array.push (buffer.toArray zip.val) Array.empty :: s1
+
+                    else
+                        s1
+
+                s3 =
+                    if intersects from to zip.at zip.tail then
+                        Array.slice (from - zip.at) (to - zip.at) zip.tail :: s2
+
+                    else
+                        s2
+            in
+            List.foldl
+                (\next accum -> Array.append next accum)
+                Array.empty
+                s3
 
 
 
@@ -158,8 +230,12 @@ Note that de-focussing and re-focussing the `Buffer` will use the `toZip` and
 
 -}
 setFocus : Int -> b -> Buffer a b -> Buffer a b
-setFocus =
-    Debug.todo "set"
+setFocus idx val buffer =
+    let
+        rezipped =
+            zipAt idx buffer
+    in
+    { rezipped | zip = rezipped.zip |> Maybe.map (\zip -> { zip | val = val }) }
 
 
 {-| Gets the value at the specified focus of the `Buffer`. If the `Buffer` was
@@ -170,9 +246,13 @@ Note that de-focussing and re-focussing the `Buffer` will use the `toZip` and
 `toArray` functions that were specified when creating the buffer.
 
 -}
-getFocus : Int -> Buffer a b -> b
-getFocus =
-    Debug.todo "getFocus"
+getFocus : Int -> Buffer a b -> ( Buffer a b, Maybe b )
+getFocus idx buffer =
+    let
+        rezipped =
+            zipAt idx buffer
+    in
+    ( rezipped, rezipped.zip |> Maybe.map .val )
 
 
 
@@ -188,5 +268,15 @@ the extracted elements, and it only iterates over the range you specify.
 
 -}
 foldlSlice : (Int -> a -> acc -> acc) -> acc -> Int -> Int -> Buffer a b -> acc
-foldlSlice =
-    Debug.todo "foldlSlice"
+foldlSlice fn acc from to buffer =
+    List.foldl
+        (\idx resAcc ->
+            case get idx buffer of
+                Just val ->
+                    fn idx val resAcc
+
+                Nothing ->
+                    resAcc
+        )
+        acc
+        (List.range from to)
