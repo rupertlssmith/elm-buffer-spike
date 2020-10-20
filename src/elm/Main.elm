@@ -33,8 +33,8 @@ config =
         (lineHeightRatio * fontSize)
             |> floor
             |> toFloat
-    , lineLength = 10
-    , numLines = 3
+    , lineLength = 120
+    , numLines = 10000
     }
 
 
@@ -97,84 +97,80 @@ type Msg
 
 
 update msg model =
-    let
-        ( newModel, outCmd ) =
-            case msg of
-                RandomBuffer buffer ->
-                    ( { model | buffer = buffer }, Cmd.none )
+    case msg of
+        RandomBuffer buffer ->
+            ( { model | buffer = buffer }, Cmd.none )
 
-                Scroll scroll ->
-                    ( { model | top = scroll.scrollTop }, Cmd.none )
+        Scroll scroll ->
+            ( { model | top = scroll.scrollTop }, Cmd.none )
 
-                ContentViewPort result ->
-                    case result of
-                        Ok viewport ->
-                            ( { model
-                                | height = viewport.viewport.height
-                                , bottomOffset = bottomOffset viewport.viewport.height
-                                , linesPerPage = linesPerPage viewport.viewport.height
-                              }
-                            , Cmd.none
-                            )
-
-                        _ ->
-                            ( model, Cmd.none )
-
-                Resize ->
-                    ( model, initEditorSize )
-
-                MoveUp ->
-                    let
-                        cursor =
-                            model.cursor - 1
-                    in
+        ContentViewPort result ->
+            case result of
+                Ok viewport ->
                     ( { model
-                        | cursor = cursor
-                        , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+                        | height = viewport.viewport.height
+                        , bottomOffset = bottomOffset viewport.viewport.height
+                        , linesPerPage = linesPerPage viewport.viewport.height
                       }
-                    , scrollTo ((cursor |> toFloat) * config.lineHeight)
+                    , Cmd.none
                     )
 
-                MoveDown ->
-                    let
-                        cursor =
-                            model.cursor + 1
-                    in
-                    ( { model
-                        | cursor = cursor
-                        , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
-                      }
-                    , scrollTo ((cursor |> toFloat) * config.lineHeight - model.bottomOffset)
-                    )
-
-                PageUp ->
-                    let
-                        cursor =
-                            model.cursor - model.linesPerPage
-                    in
-                    ( { model
-                        | cursor = cursor
-                        , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
-                      }
-                    , scrollTo ((cursor |> toFloat) * config.lineHeight)
-                    )
-
-                PageDown ->
-                    let
-                        cursor =
-                            model.cursor + model.linesPerPage
-                    in
-                    ( { model
-                        | cursor = cursor
-                        , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
-                      }
-                    , scrollTo ((cursor |> toFloat) * config.lineHeight - model.bottomOffset)
-                    )
-
-                NoOp ->
+                _ ->
                     ( model, Cmd.none )
-    in
-    ( newModel |> Debug.log "model", outCmd )
+
+        Resize ->
+            ( model, initEditorSize )
+
+        MoveUp ->
+            let
+                cursor =
+                    model.cursor - 1
+            in
+            ( { model
+                | cursor = cursor
+                , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+              }
+            , scrollTo ((cursor |> toFloat) * config.lineHeight)
+            )
+
+        MoveDown ->
+            let
+                cursor =
+                    model.cursor + 1
+            in
+            ( { model
+                | cursor = cursor
+                , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+              }
+            , scrollTo ((cursor |> toFloat) * config.lineHeight - model.bottomOffset)
+            )
+
+        PageUp ->
+            let
+                cursor =
+                    model.cursor - model.linesPerPage
+            in
+            ( { model
+                | cursor = cursor
+                , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+              }
+            , scrollTo ((cursor |> toFloat) * config.lineHeight)
+            )
+
+        PageDown ->
+            let
+                cursor =
+                    model.cursor + model.linesPerPage
+            in
+            ( { model
+                | cursor = cursor
+                , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+              }
+            , scrollTo ((cursor |> toFloat) * config.lineHeight - model.bottomOffset)
+            )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 {-| The difference between the height and the height floored to line height.

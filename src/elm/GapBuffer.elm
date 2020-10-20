@@ -53,13 +53,6 @@ zipAt idx buffer =
     let
         dezipped =
             dezip buffer
-                |> Debug.log "dezipped"
-
-        _ =
-            Debug.log "idx" idx
-
-        _ =
-            Debug.log "buffer.length" buffer.length
     in
     if idx < 0 || idx >= buffer.length then
         dezipped
@@ -83,17 +76,9 @@ dezip : Buffer a b -> Buffer a b
 dezip buffer =
     case buffer.zip of
         Nothing ->
-            let
-                _ =
-                    Debug.log "dezip" "Nothing"
-            in
             buffer
 
         Just zip ->
-            let
-                _ =
-                    Debug.log "dezip" "Just"
-            in
             { buffer
                 | head =
                     Array.append
@@ -185,7 +170,7 @@ get idx buffer =
                 buffer.toArray zip.val |> Just
 
             else
-                Array.get (idx - zip.at) zip.tail
+                Array.get (idx - zip.at - 1) zip.tail
 
 
 {-| Extracts a slice of data from the buffer, between the _from_ and _to_ indices
