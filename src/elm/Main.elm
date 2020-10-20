@@ -4,9 +4,9 @@ import Array exposing (Array)
 import Browser exposing (Document)
 import Browser.Dom exposing (Viewport)
 import Browser.Events
-import Buffer
 import Css
 import Css.Global
+import GapBuffer exposing (Buffer)
 import Html as H exposing (Attribute, Html)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -47,7 +47,7 @@ main =
 
 
 type alias Model =
-    { buffer : Array String
+    { buffer : Buffer String String
     , top : Float
     , height : Float
     , cursor : Int
@@ -63,7 +63,7 @@ type alias RowCol =
 
 
 init _ =
-    ( { buffer = Array.empty
+    ( { buffer = GapBuffer.empty identity identity
       , top = 0
       , height = 0
       , cursor = 0
@@ -84,7 +84,7 @@ subscriptions _ =
 
 type Msg
     = Scroll ScrollEvent
-    | RandomBuffer (Array String)
+    | RandomBuffer (Buffer String String)
     | ContentViewPort (Result Browser.Dom.Error Viewport)
     | Resize
     | MoveUp
@@ -266,7 +266,7 @@ viewContent model =
             ((model.top + model.height) / config.lineHeight |> floor) + pad
 
         height =
-            (Array.length model.buffer |> toFloat) * config.lineHeight
+            (GapBuffer.length model.buffer |> toFloat) * config.lineHeight
     in
     H.div
         [ HA.id "content-main"
@@ -275,12 +275,12 @@ viewContent model =
         [ keyedViewLines startLine endLine model.buffer ]
 
 
-keyedViewLines : Int -> Int -> Array String -> Html Msg
+keyedViewLines : Int -> Int -> Buffer String String -> Html Msg
 keyedViewLines start end buffer =
     List.range start end
         |> List.foldr
             (\idx accum ->
-                case Array.get idx buffer of
+                case GapBuffer.get idx buffer of
                     Nothing ->
                         accum
 
@@ -362,7 +362,7 @@ keyToMsg string =
 -- Random buffer initialization.
 
 
-randomBuffer : Int -> Int -> Generator (Array String)
+randomBuffer : Int -> Int -> Generator (Buffer String String)
 randomBuffer width length =
     let
         regex =
@@ -399,6 +399,7 @@ randomBuffer width length =
     in
     line 0 [] wordGenerator
         |> Random.Array.array length
+        |> Random.map (GapBuffer.fromArray identity identity)
 
 
 lorumIpsum : String

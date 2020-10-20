@@ -1,5 +1,6 @@
-module Buffer exposing
-    ( empty, fromArray, fromList
+module GapBuffer exposing
+    ( Buffer
+    , empty, fromArray, fromList
     , get, isEmpty, length, slice
     , getFocus, setFocus
     , foldlSlice
@@ -10,6 +11,7 @@ module Buffer exposing
 
 # Make a Buffer
 
+@docs Buffer
 @docs empty, fromArray, fromList
 
 
