@@ -29,13 +29,15 @@ config =
         lineHeightRatio =
             1.4
     in
-    { lineHeight =
+    { fontSize = fontSize
+    , lineHeightRatio = lineHeightRatio
+    , lineHeight =
         (lineHeightRatio * fontSize)
             |> floor
             |> toFloat
     , lineLength = 120
     , numLines = 10000
-    , blinkInterval = 500
+    , blinkInterval = 400
     }
 
 
@@ -303,8 +305,7 @@ editorView model =
             [ HA.id "editor-main-inner"
             , HA.tabindex 0
             ]
-            [ viewCursors model
-            , viewContent model
+            [ viewContent model
             ]
         ]
 
@@ -326,7 +327,13 @@ viewCursor : Model -> Html Msg
 viewCursor model =
     let
         top =
-            String.fromFloat (toFloat model.cursor.row * config.lineHeight) ++ "px"
+            String.fromFloat
+                (toFloat model.cursor.row
+                    * config.lineHeight
+                    - (config.lineHeight - config.fontSize)
+                    / 2
+                )
+                ++ "px"
 
         left =
             String.fromInt model.cursor.col ++ "ch"
@@ -360,7 +367,9 @@ viewContent model =
         [ HA.id "content-main"
         , HA.style "height" (String.fromFloat height ++ "px")
         ]
-        [ keyedViewLines startLine endLine model.buffer ]
+        [ viewCursors model
+        , keyedViewLines startLine endLine model.buffer
+        ]
 
 
 keyedViewLines : Int -> Int -> Buffer String String -> Html Msg
