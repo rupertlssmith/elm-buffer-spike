@@ -293,7 +293,7 @@ global =
 
 view : Model -> Document Msg
 view model =
-    { title = "Scroll Spike"
+    { title = "Buffer Spike"
     , body =
         [ Css.Global.global global |> Html.Styled.toUnstyled
         , editorView model
