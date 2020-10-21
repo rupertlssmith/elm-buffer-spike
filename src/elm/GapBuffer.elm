@@ -194,29 +194,30 @@ slice from to buffer =
             let
                 s1 =
                     if intersects from to 0 buffer.head then
-                        Array.slice from to buffer.head :: []
+                        Array.slice from to buffer.head
 
                     else
-                        []
+                        Array.empty
 
                 s2 =
                     if zip.at >= from && zip.at <= to then
-                        Array.push (buffer.toArray zip.val) Array.empty :: s1
+                        Array.append
+                            s1
+                            (Array.push (buffer.toArray zip.val) Array.empty)
 
                     else
                         s1
 
                 s3 =
                     if intersects from to zip.at zip.tail then
-                        Array.slice (from - zip.at) (to - zip.at) zip.tail :: s2
+                        Array.append
+                            s2
+                            (Array.slice (from - zip.at) (to - zip.at) zip.tail)
 
                     else
                         s2
             in
-            List.foldl
-                (\next accum -> Array.append next accum)
-                Array.empty
-                s3
+            s3
 
 
 
