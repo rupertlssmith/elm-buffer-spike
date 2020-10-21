@@ -35,6 +35,7 @@ config =
             |> toFloat
     , lineLength = 120
     , numLines = 10000
+    , blinkInterval = 500
     }
 
 
@@ -52,9 +53,10 @@ type alias Model =
     { buffer : Buffer String String
     , top : Float
     , height : Float
-    , cursor : Int
+    , cursor : RowCol
     , bottomOffset : Float
     , linesPerPage : Int
+    , blinker : Bool
     }
 
 
@@ -68,9 +70,10 @@ init _ =
     ( { buffer = GapBuffer.empty identity identity
       , top = 0
       , height = 0
-      , cursor = 0
+      , cursor = { row = 0, col = 0 }
       , bottomOffset = 0.0
       , linesPerPage = 0
+      , blinker = False
       }
     , Cmd.batch
         [ Task.perform RandomBuffer (randomBuffer config.lineLength config.numLines |> randomToTask)
@@ -81,7 +84,10 @@ init _ =
 
 
 subscriptions _ =
-    Browser.Events.onResize (\_ _ -> Resize)
+    Sub.batch
+        [ Browser.Events.onResize (\_ _ -> Resize)
+        , Time.every config.blinkInterval (always Blink)
+        ]
 
 
 type Msg
@@ -91,11 +97,15 @@ type Msg
     | Resize
     | MoveUp
     | MoveDown
+    | MoveLeft
+    | MoveRight
     | PageUp
     | PageDown
+    | Blink
     | NoOp
 
 
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         RandomBuffer buffer ->
@@ -123,51 +133,76 @@ update msg model =
 
         MoveUp ->
             let
-                cursor =
-                    model.cursor - 1
+                newRow =
+                    model.cursor.row - 1
             in
             ( { model
-                | cursor = cursor
-                , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+                | cursor = { row = newRow, col = model.cursor.col }
+                , buffer = GapBuffer.getFocus newRow model.buffer |> Tuple.first
               }
-            , scrollTo ((cursor |> toFloat) * config.lineHeight)
+            , scrollTo ((newRow |> toFloat) * config.lineHeight)
             )
 
         MoveDown ->
             let
-                cursor =
-                    model.cursor + 1
+                newRow =
+                    model.cursor.row + 1
             in
             ( { model
-                | cursor = cursor
-                , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+                | cursor = { row = newRow, col = model.cursor.col }
+                , buffer = GapBuffer.getFocus newRow model.buffer |> Tuple.first
               }
-            , scrollTo ((cursor |> toFloat) * config.lineHeight - model.bottomOffset)
+            , scrollTo ((newRow |> toFloat) * config.lineHeight - model.bottomOffset)
+            )
+
+        MoveLeft ->
+            let
+                newCol =
+                    model.cursor.col - 1
+            in
+            ( { model
+                | cursor = { row = model.cursor.row, col = newCol }
+              }
+            , Cmd.none
+            )
+
+        MoveRight ->
+            let
+                newCol =
+                    model.cursor.col + 1
+            in
+            ( { model
+                | cursor = { row = model.cursor.row, col = newCol }
+              }
+            , Cmd.none
             )
 
         PageUp ->
             let
-                cursor =
-                    model.cursor - model.linesPerPage
+                newRow =
+                    model.cursor.row - model.linesPerPage
             in
             ( { model
-                | cursor = cursor
-                , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+                | cursor = { row = newRow, col = model.cursor.col }
+                , buffer = GapBuffer.getFocus newRow model.buffer |> Tuple.first
               }
-            , scrollTo ((cursor |> toFloat) * config.lineHeight)
+            , scrollTo ((newRow |> toFloat) * config.lineHeight)
             )
 
         PageDown ->
             let
-                cursor =
-                    model.cursor + model.linesPerPage
+                newRow =
+                    model.cursor.row + model.linesPerPage
             in
             ( { model
-                | cursor = cursor
-                , buffer = GapBuffer.getFocus cursor model.buffer |> Tuple.first
+                | cursor = { row = newRow, col = model.cursor.col }
+                , buffer = GapBuffer.getFocus newRow model.buffer |> Tuple.first
               }
-            , scrollTo ((cursor |> toFloat) * config.lineHeight - model.bottomOffset)
+            , scrollTo ((newRow |> toFloat) * config.lineHeight - model.bottomOffset)
             )
+
+        Blink ->
+            ( { model | blinker = not model.blinker }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -232,6 +267,14 @@ global =
         , Css.px 0 |> Css.left
         , Css.px 0 |> Css.right
         ]
+    , Css.Global.class "cursors"
+        [ Css.position Css.relative
+        ]
+    , Css.Global.class "cursor"
+        [ Css.position Css.absolute
+        , Css.px config.lineHeight |> Css.height
+        , Css.borderLeft3 (Css.px 2.5) Css.solid (Css.rgb 90 95 167)
+        ]
     ]
 
 
@@ -260,9 +303,40 @@ editorView model =
             [ HA.id "editor-main-inner"
             , HA.tabindex 0
             ]
-            [ viewContent model
+            [ viewCursors model
+            , viewContent model
             ]
         ]
+
+
+viewCursors : Model -> Html Msg
+viewCursors model =
+    H.div
+        [ HA.class "cursors"
+        , if model.blinker then
+            HA.style "visibility" "visible"
+
+          else
+            HA.style "visibility" "hidden"
+        ]
+        [ viewCursor model ]
+
+
+viewCursor : Model -> Html Msg
+viewCursor model =
+    let
+        top =
+            String.fromFloat (toFloat model.cursor.row * config.lineHeight) ++ "px"
+
+        left =
+            String.fromInt model.cursor.col ++ "ch"
+    in
+    H.div
+        [ HA.class "cursor"
+        , HA.style "top" top
+        , HA.style "left" left
+        ]
+        [ H.text "" ]
 
 
 viewContent : Model -> Html Msg
@@ -361,6 +435,12 @@ keyToMsg string =
 
         "ArrowDown" ->
             Decode.succeed MoveDown
+
+        "ArrowLeft" ->
+            Decode.succeed MoveLeft
+
+        "ArrowRight" ->
+            Decode.succeed MoveRight
 
         "PageUp" ->
             Decode.succeed PageUp
