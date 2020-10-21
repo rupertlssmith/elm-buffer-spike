@@ -31,10 +31,7 @@ config =
     in
     { fontSize = fontSize
     , lineHeightRatio = lineHeightRatio
-    , lineHeight =
-        (lineHeightRatio * fontSize)
-            |> floor
-            |> toFloat
+    , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
     , lineLength = 120
     , numLines = 10000
     , blinkInterval = 400
@@ -56,8 +53,9 @@ type alias Model =
     , top : Float
     , height : Float
     , cursor : RowCol
-    , bottomOffset : Float
+    , scrollRow : Int
     , linesPerPage : Int
+    , bottomOffset : Float
     , blinker : Bool
     }
 
@@ -73,8 +71,9 @@ init _ =
       , top = 0
       , height = 0
       , cursor = { row = 0, col = 0 }
-      , bottomOffset = 0.0
+      , scrollRow = 0
       , linesPerPage = 0
+      , bottomOffset = 0.0
       , blinker = False
       }
     , Cmd.batch
@@ -136,7 +135,9 @@ update msg model =
         MoveUp ->
             let
                 newRow =
-                    model.cursor.row - 1
+                    max
+                        (model.cursor.row - 1)
+                        0
             in
             ( { model
                 | cursor = { row = newRow, col = model.cursor.col }
@@ -148,7 +149,9 @@ update msg model =
         MoveDown ->
             let
                 newRow =
-                    model.cursor.row + 1
+                    min
+                        (model.cursor.row + 1)
+                        (GapBuffer.length model.buffer - model.linesPerPage)
             in
             ( { model
                 | cursor = { row = newRow, col = model.cursor.col }
@@ -182,7 +185,9 @@ update msg model =
         PageUp ->
             let
                 newRow =
-                    model.cursor.row - model.linesPerPage
+                    max
+                        (model.cursor.row - model.linesPerPage)
+                        0
             in
             ( { model
                 | cursor = { row = newRow, col = model.cursor.col }
@@ -194,7 +199,9 @@ update msg model =
         PageDown ->
             let
                 newRow =
-                    model.cursor.row + model.linesPerPage
+                    min
+                        (model.cursor.row + model.linesPerPage)
+                        (GapBuffer.length model.buffer - model.linesPerPage)
             in
             ( { model
                 | cursor = { row = newRow, col = model.cursor.col }
