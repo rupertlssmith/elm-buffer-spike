@@ -33,7 +33,7 @@ config =
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
     , lineLength = 120
-    , numLines = 10000
+    , numLines = 50
     , blinkInterval = 400
     }
 
@@ -113,7 +113,7 @@ update msg model =
             ( { model | buffer = buffer }, Cmd.none )
 
         Scroll scroll ->
-            ( { model | top = scroll.scrollTop }, Cmd.none )
+            ( { model | top = scroll.scrollTop |> Debug.log "top" }, Cmd.none )
 
         ContentViewPort result ->
             case result of
@@ -133,32 +133,16 @@ update msg model =
             ( model, initEditorSize )
 
         MoveUp ->
-            let
-                newRow =
-                    max
-                        (model.cursor.row - 1)
-                        0
-            in
-            ( { model
-                | cursor = { row = newRow, col = model.cursor.col }
-                , buffer = GapBuffer.getFocus newRow model.buffer |> Tuple.first
-              }
-            , scrollTo ((newRow |> toFloat) * config.lineHeight)
-            )
+            ( model, Cmd.none )
+                |> andThen (moveCursorRowBy -1)
+                |> andThen refocusBuffer
+                |> andThen scrollIfNecessary
 
         MoveDown ->
-            let
-                newRow =
-                    min
-                        (model.cursor.row + 1)
-                        (GapBuffer.length model.buffer - model.linesPerPage)
-            in
-            ( { model
-                | cursor = { row = newRow, col = model.cursor.col }
-                , buffer = GapBuffer.getFocus newRow model.buffer |> Tuple.first
-              }
-            , scrollTo ((newRow |> toFloat) * config.lineHeight - model.bottomOffset)
-            )
+            ( model, Cmd.none )
+                |> andThen (moveCursorRowBy 1)
+                |> andThen refocusBuffer
+                |> andThen scrollIfNecessary
 
         MoveLeft ->
             let
@@ -183,38 +167,78 @@ update msg model =
             )
 
         PageUp ->
-            let
-                newRow =
-                    max
-                        (model.cursor.row - model.linesPerPage)
-                        0
-            in
-            ( { model
-                | cursor = { row = newRow, col = model.cursor.col }
-                , buffer = GapBuffer.getFocus newRow model.buffer |> Tuple.first
-              }
-            , scrollTo ((newRow |> toFloat) * config.lineHeight)
-            )
+            ( model, Cmd.none )
+                |> andThen (moveCursorRowBy -model.linesPerPage)
+                |> andThen refocusBuffer
+                |> andThen scrollIfNecessary
 
         PageDown ->
-            let
-                newRow =
-                    min
-                        (model.cursor.row + model.linesPerPage)
-                        (GapBuffer.length model.buffer - model.linesPerPage)
-            in
-            ( { model
-                | cursor = { row = newRow, col = model.cursor.col }
-                , buffer = GapBuffer.getFocus newRow model.buffer |> Tuple.first
-              }
-            , scrollTo ((newRow |> toFloat) * config.lineHeight - model.bottomOffset)
-            )
+            ( model, Cmd.none )
+                |> andThen (moveCursorRowBy model.linesPerPage)
+                |> andThen refocusBuffer
+                |> andThen scrollIfNecessary
 
         Blink ->
             ( { model | blinker = not model.blinker }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
+
+
+andThen : (model -> ( model, Cmd msg )) -> ( model, Cmd msg ) -> ( model, Cmd msg )
+andThen fn ( model, cmd ) =
+    let
+        ( nextModel, nextCmd ) =
+            fn model
+    in
+    ( nextModel, Cmd.batch [ cmd, nextCmd ] )
+
+
+moveCursorRowBy : Int -> Model -> ( Model, Cmd Msg )
+moveCursorRowBy val model =
+    let
+        newRow =
+            clamp
+                0
+                (GapBuffer.length model.buffer - 1)
+                (model.cursor.row + val)
+    in
+    ( { model | cursor = { row = newRow |> Debug.log "newRow", col = model.cursor.col } }
+    , Cmd.none
+    )
+
+
+refocusBuffer : Model -> ( Model, Cmd Msg )
+refocusBuffer model =
+    ( { model | buffer = GapBuffer.getFocus model.cursor.row model.buffer |> Tuple.first }
+    , Cmd.none
+    )
+
+
+scrollIfNecessary : Model -> ( Model, Cmd Msg )
+scrollIfNecessary model =
+    let
+        ( newScrollRow, scrollCmd ) =
+            if model.cursor.row > (model.scrollRow + model.linesPerPage - 3) then
+                let
+                    topRow =
+                        model.cursor.row - model.linesPerPage + 3
+                in
+                ( topRow, scrollTo ((topRow |> toFloat) * config.lineHeight - model.bottomOffset) )
+
+            else if model.cursor.row < (model.scrollRow + 2) then
+                let
+                    topRow =
+                        model.cursor.row - 2
+                in
+                ( topRow, scrollTo ((topRow |> toFloat) * config.lineHeight) )
+
+            else
+                ( model.scrollRow, Cmd.none )
+    in
+    ( { model | scrollRow = newScrollRow |> Debug.log "scrollRow" }
+    , scrollCmd
+    )
 
 
 {-| The difference between the height and the height floored to line height.
@@ -306,7 +330,7 @@ editorView model =
     H.div
         [ HA.id "editor-main"
         , HE.on "scroll" scrollDecoder
-        , HE.on "keydown" keyDecoder
+        , HE.preventDefaultOn "keydown" keyDecoder
         ]
         [ H.div
             [ HA.id "editor-main-inner"
@@ -437,32 +461,32 @@ scrollDecoder =
 -- Keyboard events.
 
 
-keyDecoder : Decoder Msg
+keyDecoder : Decoder ( Msg, Bool )
 keyDecoder =
     Decode.field "key" Decode.string
         |> Decode.andThen keyToMsg
 
 
-keyToMsg : String -> Decoder Msg
+keyToMsg : String -> Decoder ( Msg, Bool )
 keyToMsg string =
     case string of
         "ArrowUp" ->
-            Decode.succeed MoveUp
+            Decode.succeed ( MoveUp, True )
 
         "ArrowDown" ->
-            Decode.succeed MoveDown
+            Decode.succeed ( MoveDown, True )
 
         "ArrowLeft" ->
-            Decode.succeed MoveLeft
+            Decode.succeed ( MoveLeft, True )
 
         "ArrowRight" ->
-            Decode.succeed MoveRight
+            Decode.succeed ( MoveRight, True )
 
         "PageUp" ->
-            Decode.succeed PageUp
+            Decode.succeed ( PageUp, True )
 
         "PageDown" ->
-            Decode.succeed PageDown
+            Decode.succeed ( PageDown, True )
 
         _ ->
             Decode.fail "This key does nothing"
