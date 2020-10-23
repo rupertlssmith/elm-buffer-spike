@@ -50,26 +50,20 @@ type alias Buffer a b =
 
 zipAt : Int -> Buffer a b -> Buffer a b
 zipAt idx buffer =
-    let
-        dezipped =
-            dezip buffer
-    in
     if idx < 0 || idx >= buffer.length then
-        dezipped
+        buffer
 
     else
-        { dezipped
-            | head = Array.slice 0 idx dezipped.head
-            , zip =
-                Array.get idx dezipped.head
-                    |> Maybe.map
-                        (\val ->
-                            { val = dezipped.toZip val
-                            , at = idx
-                            , tail = Array.slice (idx + 1) dezipped.length dezipped.head
-                            }
-                        )
-        }
+        case buffer.zip of
+            Nothing ->
+                rezip idx buffer
+
+            Just zip ->
+                if zip.at == idx then
+                    buffer
+
+                else
+                    dezip buffer |> rezip idx
 
 
 dezip : Buffer a b -> Buffer a b
@@ -89,6 +83,22 @@ dezip buffer =
                         )
                 , zip = Nothing
             }
+
+
+rezip : Int -> Buffer a b -> Buffer a b
+rezip idx buffer =
+    { buffer
+        | head = Array.slice 0 idx buffer.head
+        , zip =
+            Array.get idx buffer.head
+                |> Maybe.map
+                    (\val ->
+                        { val = buffer.toZip val
+                        , at = idx
+                        , tail = Array.slice (idx + 1) buffer.length buffer.head
+                        }
+                    )
+    }
 
 
 
