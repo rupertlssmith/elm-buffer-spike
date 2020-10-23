@@ -18,7 +18,7 @@ import Random exposing (Generator, Seed)
 import Random.Array
 import Regex exposing (Regex)
 import Task exposing (Task)
-import Time
+import Time exposing (Posix)
 
 
 config =
@@ -57,6 +57,7 @@ type alias Model =
     , linesPerPage : Int
     , bottomOffset : Float
     , blinker : Bool
+    , lastActive : Posix
     }
 
 
@@ -75,6 +76,7 @@ init _ =
       , linesPerPage = 0
       , bottomOffset = 0.0
       , blinker = False
+      , lastActive = Time.millisToPosix 0
       }
     , Cmd.batch
         [ Task.perform RandomBuffer (randomBuffer config.lineLength config.numLines |> randomToTask)
@@ -87,7 +89,7 @@ init _ =
 subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize (\_ _ -> Resize)
-        , Time.every config.blinkInterval (always Blink)
+        , Time.every config.blinkInterval Blink
         ]
 
 
@@ -102,7 +104,8 @@ type Msg
     | MoveRight
     | PageUp
     | PageDown
-    | Blink
+    | Blink Posix
+    | Activity Posix
     | NoOp
 
 
@@ -137,12 +140,14 @@ update msg model =
                 |> andThen (moveCursorRowBy -1)
                 |> andThen refocusBuffer
                 |> andThen scrollIfNecessary
+                |> andThen activity
 
         MoveDown ->
             ( model, Cmd.none )
                 |> andThen (moveCursorRowBy 1)
                 |> andThen refocusBuffer
                 |> andThen scrollIfNecessary
+                |> andThen activity
 
         MoveLeft ->
             let
@@ -151,8 +156,9 @@ update msg model =
             in
             ( { model
                 | cursor = { row = model.cursor.row, col = newCol }
+                , blinker = True
               }
-            , Cmd.none
+            , Time.now |> Task.perform Activity
             )
 
         MoveRight ->
@@ -162,8 +168,9 @@ update msg model =
             in
             ( { model
                 | cursor = { row = model.cursor.row, col = newCol }
+                , blinker = True
               }
-            , Cmd.none
+            , Time.now |> Task.perform Activity
             )
 
         PageUp ->
@@ -171,15 +178,24 @@ update msg model =
                 |> andThen (moveCursorRowBy -model.linesPerPage)
                 |> andThen refocusBuffer
                 |> andThen scrollIfNecessary
+                |> andThen activity
 
         PageDown ->
             ( model, Cmd.none )
                 |> andThen (moveCursorRowBy model.linesPerPage)
                 |> andThen refocusBuffer
                 |> andThen scrollIfNecessary
+                |> andThen activity
 
-        Blink ->
-            ( { model | blinker = not model.blinker }, Cmd.none )
+        Blink posix ->
+            if Time.posixToMillis posix - Time.posixToMillis model.lastActive > config.blinkInterval then
+                ( { model | blinker = not model.blinker }, Cmd.none )
+
+            else
+                ( { model | blinker = True }, Cmd.none )
+
+        Activity posix ->
+            ( { model | lastActive = posix, blinker = True }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -239,6 +255,11 @@ scrollIfNecessary model =
     ( { model | scrollRow = newScrollRow |> Debug.log "scrollRow" }
     , scrollCmd
     )
+
+
+activity : Model -> ( Model, Cmd Msg )
+activity model =
+    ( model, Time.now |> Task.perform Activity )
 
 
 {-| The difference between the height and the height floored to line height.
