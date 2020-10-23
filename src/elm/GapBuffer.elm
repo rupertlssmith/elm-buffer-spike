@@ -2,7 +2,7 @@ module GapBuffer exposing
     ( Buffer
     , empty, fromArray, fromList
     , get, isEmpty, length, slice
-    , getFocus, setFocus
+    , getFocus, setFocus, updateFocus
     , foldlSlice
     )
 
@@ -22,7 +22,7 @@ module GapBuffer exposing
 
 # Manipulate
 
-@docs getFocus, setFocus
+@docs getFocus, setFocus, updateFocus
 
 
 # Iterate
@@ -261,6 +261,23 @@ getFocus idx buffer =
             zipAt idx buffer
     in
     ( rezipped, rezipped.zip |> Maybe.map .val )
+
+
+{-| Update the value at the specified focus of the `Buffer`. If the `Buffer` was
+already focussed at a different index, that index will be de-focussed, and the
+focus shifted to the specified index.
+
+Note that de-focussing and re-focussing the `Buffer` will use the `toZip` and
+`toArray` functions that were specified when creating the buffer.
+
+-}
+updateFocus : Int -> (b -> b) -> Buffer a b -> Buffer a b
+updateFocus idx fn buffer =
+    let
+        rezipped =
+            zipAt idx buffer
+    in
+    { rezipped | zip = rezipped.zip |> Maybe.map (\zip -> { zip | val = fn zip.val }) }
 
 
 

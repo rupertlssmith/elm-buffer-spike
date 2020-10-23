@@ -168,11 +168,13 @@ update msg model =
         MoveLeft ->
             ( model, Cmd.none )
                 |> andThen (moveCursorColBy -1)
+                |> andThen refocusBuffer
                 |> andThen activity
 
         MoveRight ->
             ( model, Cmd.none )
                 |> andThen (moveCursorColBy 1)
+                |> andThen refocusBuffer
                 |> andThen activity
 
         PageUp ->
@@ -239,7 +241,13 @@ moveCursorColBy val model =
 
 refocusBuffer : Model -> ( Model, Cmd Msg )
 refocusBuffer model =
-    ( { model | buffer = GapBuffer.getFocus model.cursor.row model.buffer |> Tuple.first }
+    let
+        refocussedBuffer =
+            GapBuffer.updateFocus model.cursor.row
+                (\rowBuffer -> GapBuffer.updateFocus model.cursor.col identity rowBuffer)
+                model.buffer
+    in
+    ( { model | buffer = refocussedBuffer }
     , Cmd.none
     )
 
