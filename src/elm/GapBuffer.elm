@@ -3,7 +3,7 @@ module GapBuffer exposing
     , empty, fromArray, fromList
     , get, isEmpty, length, slice
     , getFocus, setFocus, updateFocus
-    , foldlSlice
+    , foldlSlice, foldrSlice
     )
 
 {-| Implements an efficient Buffer for text editing.
@@ -27,7 +27,7 @@ module GapBuffer exposing
 
 # Iterate
 
-@docs foldlSlice
+@docs foldlSlice, foldrSlice
 
 -}
 
@@ -295,6 +295,29 @@ the extracted elements, and it only iterates over the range you specify.
 foldlSlice : (Int -> a -> acc -> acc) -> acc -> Int -> Int -> Buffer a b -> acc
 foldlSlice fn acc from to buffer =
     List.foldl
+        (\idx resAcc ->
+            case get idx buffer of
+                Just val ->
+                    fn idx val resAcc
+
+                Nothing ->
+                    resAcc
+        )
+        acc
+        (List.range from to)
+
+
+{-| Iterates backward over a region of the `Buffer`.
+
+This is the most efficient way to extract and map data from the buffer. For
+example, you would use this when rendering the visible contents of a `Buffer`
+to Html. The implementation does not create intermediate data structures to hold
+the extracted elements, and it only iterates over the range you specify.
+
+-}
+foldrSlice : (Int -> a -> acc -> acc) -> acc -> Int -> Int -> Buffer a b -> acc
+foldrSlice fn acc from to buffer =
+    List.foldr
         (\idx resAcc ->
             case get idx buffer of
                 Just val ->

@@ -33,7 +33,7 @@ config =
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
     , lineLength = 120
-    , numLines = 10000
+    , numLines = 500000
     , blinkInterval = 400
     }
 
@@ -97,8 +97,12 @@ stringToCharBuffer string =
 
 charBufferToString : Buffer Char Char -> String
 charBufferToString charBuffer =
-    GapBuffer.slice 0 (GapBuffer.length charBuffer) charBuffer
-        |> Array.toList
+    GapBuffer.foldrSlice
+        (\_ char accum -> char :: accum)
+        []
+        0
+        (GapBuffer.length charBuffer)
+        charBuffer
         |> String.fromList
 
 
@@ -132,7 +136,7 @@ update msg model =
             ( { model | buffer = buffer }, Cmd.none )
 
         Scroll scroll ->
-            ( { model | top = scroll.scrollTop |> Debug.log "top" }, Cmd.none )
+            ( { model | top = scroll.scrollTop }, Cmd.none )
 
         ContentViewPort result ->
             case result of
@@ -223,7 +227,7 @@ moveCursorRowBy val model =
                 (GapBuffer.length model.buffer - 1)
                 (model.cursor.row + val)
     in
-    ( { model | cursor = { row = newRow |> Debug.log "newRow", col = model.cursor.col } }
+    ( { model | cursor = { row = newRow, col = model.cursor.col } }
     , Cmd.none
     )
 
@@ -273,7 +277,7 @@ scrollIfNecessary model =
             else
                 ( model.scrollRow, Cmd.none )
     in
-    ( { model | scrollRow = newScrollRow |> Debug.log "scrollRow" }
+    ( { model | scrollRow = newScrollRow }
     , scrollCmd
     )
 
