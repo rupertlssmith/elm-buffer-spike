@@ -179,6 +179,11 @@ specified.
 If these indicies go outside the range of the `Buffer`, data from the
 actual available range will be returned.
 
+If you are iterating over the contents of the buffer, to render a
+UI for example, there is no need to copy the contents into an intermediate
+`Array`. You can iterate directly over a region of the buffer using the
+`foldlSlice` function instead.
+
 -}
 slice : Int -> Int -> Buffer a b -> Array a
 slice from to buffer =
