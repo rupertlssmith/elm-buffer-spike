@@ -150,28 +150,14 @@ update msg model =
                 |> andThen activity
 
         MoveLeft ->
-            let
-                newCol =
-                    model.cursor.col - 1
-            in
-            ( { model
-                | cursor = { row = model.cursor.row, col = newCol }
-                , blinker = True
-              }
-            , Time.now |> Task.perform Activity
-            )
+            ( model, Cmd.none )
+                |> andThen (moveCursorColBy -1)
+                |> andThen activity
 
         MoveRight ->
-            let
-                newCol =
-                    model.cursor.col + 1
-            in
-            ( { model
-                | cursor = { row = model.cursor.row, col = newCol }
-                , blinker = True
-              }
-            , Time.now |> Task.perform Activity
-            )
+            ( model, Cmd.none )
+                |> andThen (moveCursorColBy 1)
+                |> andThen activity
 
         PageUp ->
             ( model, Cmd.none )
@@ -224,6 +210,17 @@ moveCursorRowBy val model =
     )
 
 
+moveCursorColBy : Int -> Model -> ( Model, Cmd Msg )
+moveCursorColBy val model =
+    let
+        newCol =
+            max 0 (model.cursor.col + val)
+    in
+    ( { model | cursor = { row = model.cursor.row, col = newCol } }
+    , Cmd.none
+    )
+
+
 refocusBuffer : Model -> ( Model, Cmd Msg )
 refocusBuffer model =
     ( { model | buffer = GapBuffer.getFocus model.cursor.row model.buffer |> Tuple.first }
@@ -259,7 +256,7 @@ scrollIfNecessary model =
 
 activity : Model -> ( Model, Cmd Msg )
 activity model =
-    ( model, Time.now |> Task.perform Activity )
+    ( { model | blinker = True }, Time.now |> Task.perform Activity )
 
 
 {-| The difference between the height and the height floored to line height.
