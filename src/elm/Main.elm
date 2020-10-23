@@ -33,7 +33,7 @@ config =
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
     , lineLength = 120
-    , numLines = 50
+    , numLines = 10000
     , blinkInterval = 400
     }
 
@@ -49,7 +49,7 @@ main =
 
 
 type alias Model =
-    { buffer : Buffer String String
+    { buffer : Buffer String (Buffer Char Char)
     , top : Float
     , height : Float
     , cursor : RowCol
@@ -61,6 +61,10 @@ type alias Model =
     }
 
 
+type alias TextBuffer =
+    Buffer String (Buffer Char Char)
+
+
 type alias RowCol =
     { row : Int
     , col : Int
@@ -68,7 +72,7 @@ type alias RowCol =
 
 
 init _ =
-    ( { buffer = GapBuffer.empty identity identity
+    ( { buffer = GapBuffer.empty stringToCharBuffer charBufferToString
       , top = 0
       , height = 0
       , cursor = { row = 0, col = 0 }
@@ -86,6 +90,18 @@ init _ =
     )
 
 
+stringToCharBuffer : String -> Buffer Char Char
+stringToCharBuffer string =
+    String.toList string |> GapBuffer.fromList identity identity
+
+
+charBufferToString : Buffer Char Char -> String
+charBufferToString charBuffer =
+    GapBuffer.slice 0 (GapBuffer.length charBuffer) charBuffer
+        |> Array.toList
+        |> String.fromList
+
+
 subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize (\_ _ -> Resize)
@@ -95,7 +111,7 @@ subscriptions _ =
 
 type Msg
     = Scroll ScrollEvent
-    | RandomBuffer (Buffer String String)
+    | RandomBuffer TextBuffer
     | ContentViewPort (Result Browser.Dom.Error Viewport)
     | Resize
     | MoveUp
@@ -421,7 +437,7 @@ viewContent model =
         ]
 
 
-keyedViewLines : Int -> Int -> Buffer String String -> Html Msg
+keyedViewLines : Int -> Int -> TextBuffer -> Html Msg
 keyedViewLines start end buffer =
     List.range start end
         |> List.foldr
@@ -514,7 +530,7 @@ keyToMsg string =
 -- Random buffer initialization.
 
 
-randomBuffer : Int -> Int -> Generator (Buffer String String)
+randomBuffer : Int -> Int -> Generator TextBuffer
 randomBuffer width length =
     let
         regex =
@@ -551,7 +567,7 @@ randomBuffer width length =
     in
     line 0 [] wordGenerator
         |> Random.Array.array length
-        |> Random.map (GapBuffer.fromArray identity identity)
+        |> Random.map (GapBuffer.fromArray stringToCharBuffer charBufferToString)
 
 
 lorumIpsum : String
