@@ -63,39 +63,20 @@ zipAt idx buffer =
                     buffer
 
                 else
-                    dezip buffer |> rezip idx
-
-
-dezip : Buffer a b -> Buffer a b
-dezip buffer =
-    case buffer.zip of
-        Nothing ->
-            buffer
-
-        Just zip ->
-            { buffer
-                | head =
-                    Array.append
-                        buffer.head
-                        (Array.append
-                            (Array.fromList [ buffer.toArray zip.val ])
-                            zip.tail
-                        )
-                , zip = Nothing
-            }
+                    rezip idx buffer
 
 
 rezip : Int -> Buffer a b -> Buffer a b
 rezip idx buffer =
     { buffer
-        | head = Array.slice 0 idx buffer.head
+        | head = slice 0 idx buffer
         , zip =
-            Array.get idx buffer.head
+            get idx buffer
                 |> Maybe.map
                     (\val ->
                         { val = buffer.toZip val
                         , at = idx
-                        , tail = Array.slice (idx + 1) buffer.length buffer.head
+                        , tail = slice (idx + 1) buffer.length buffer
                         }
                     )
     }
@@ -198,8 +179,8 @@ UI for example, there is no need to copy the contents into an intermediate
 slice : Int -> Int -> Buffer a b -> Array a
 slice from to buffer =
     let
-        intersects _ _ _ _ =
-            True
+        intersects s1 e1 s2 e2 =
+            s1 < e2 && e1 >= s2
     in
     case buffer.zip of
         Nothing ->
@@ -207,27 +188,41 @@ slice from to buffer =
 
         Just zip ->
             let
+                headLength =
+                    Array.length buffer.head
+
+                tailLength =
+                    Array.length zip.tail
+
+                tailStart =
+                    zip.at + 1
+
                 s1 =
-                    if intersects from to 0 buffer.head then
-                        Array.slice from to buffer.head
+                    if intersects from to 0 headLength then
+                        Array.slice
+                            (max 0 from)
+                            (min headLength to)
+                            buffer.head
 
                     else
                         Array.empty
 
                 s2 =
                     if zip.at >= from && zip.at <= to then
-                        Array.append
-                            s1
-                            (Array.push (buffer.toArray zip.val) Array.empty)
+                        Array.push (buffer.toArray zip.val) s1
 
                     else
                         s1
 
                 s3 =
-                    if intersects from to zip.at zip.tail then
+                    if intersects from to tailStart (tailLength + tailStart) then
                         Array.append
                             s2
-                            (Array.slice (from - zip.at) (to - zip.at) zip.tail)
+                            (Array.slice
+                                (max 0 (from - tailStart))
+                                (min tailLength (to - tailStart))
+                                zip.tail
+                            )
 
                     else
                         s2
