@@ -33,7 +33,7 @@ config =
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
     , lineLength = 120
-    , numLines = 1000000
+    , numLines = 10000
     , blinkInterval = 400
     }
 
@@ -345,6 +345,7 @@ global =
         [ Css.position Css.absolute
         , Css.px 0 |> Css.left
         , Css.px 0 |> Css.right
+        , Css.px config.lineHeight |> Css.lineHeight
         ]
     , Css.Global.class "cursors"
         [ Css.position Css.relative
@@ -405,11 +406,7 @@ viewCursor model =
     let
         top =
             String.fromFloat
-                (toFloat model.cursor.row
-                    * config.lineHeight
-                    - (config.lineHeight - config.fontSize)
-                    / 2
-                )
+                (toFloat model.cursor.row * config.lineHeight)
                 ++ "px"
 
         left =
