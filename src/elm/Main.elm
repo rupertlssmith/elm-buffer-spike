@@ -18,6 +18,7 @@ import Random exposing (Generator, Seed)
 import Random.Array
 import Regex exposing (Regex)
 import Task exposing (Task)
+import TextBuffer
 import Time exposing (Posix)
 
 
