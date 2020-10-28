@@ -34,8 +34,8 @@ config =
     { fontSize = fontSize
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
-    , lineLength = 120
-    , numLines = 10000
+    , lineLength = 5
+    , numLines = 1
     , blinkInterval = 400
     }
 
@@ -181,6 +181,7 @@ update msg model =
         InsertChar char ->
             ( model, Cmd.none )
                 |> andThen (insertChar char)
+                |> andThen (moveCursorColBy 1)
 
         Blink posix ->
             if Time.posixToMillis posix - Time.posixToMillis model.lastActive > config.blinkInterval then

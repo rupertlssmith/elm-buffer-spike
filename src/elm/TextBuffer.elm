@@ -142,7 +142,7 @@ refocus row col buffer =
 insertCharAt : Char -> Int -> Int -> TextBuffer -> TextBuffer
 insertCharAt char row col buffer =
     GapBuffer.updateFocus row
-        (\rowBuffer -> GapBuffer.updateFocus col (always char) rowBuffer)
+        (\rowBuffer -> GapBuffer.insertAtFocus col char rowBuffer)
         buffer
 
 

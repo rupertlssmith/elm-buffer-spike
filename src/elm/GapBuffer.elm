@@ -2,7 +2,7 @@ module GapBuffer exposing
     ( Buffer
     , empty, fromArray, fromList
     , get, isEmpty, length, slice
-    , getFocus, setFocus, updateFocus
+    , getFocus, setFocus, insertAtFocus, updateFocus
     , foldlSlice, foldrSlice
     )
 
@@ -22,7 +22,7 @@ module GapBuffer exposing
 
 # Manipulate
 
-@docs getFocus, setFocus, updateFocus
+@docs getFocus, setFocus, insertAtFocus, updateFocus
 
 
 # Iterate
@@ -249,6 +249,24 @@ setFocus idx val buffer =
             zipAt idx buffer
     in
     { rezipped | zip = rezipped.zip |> Maybe.map (\zip -> { zip | val = val }) }
+
+
+insertAtFocus : Int -> b -> Buffer a b -> Buffer a b
+insertAtFocus idx val buffer =
+    if idx < 0 || idx > buffer.length then
+        buffer
+
+    else
+        { buffer
+            | head = slice 0 idx buffer
+            , zip =
+                { val = val
+                , at = idx
+                , tail = slice idx buffer.length buffer
+                }
+                    |> Just
+            , length = buffer.length + 1
+        }
 
 
 {-| Gets the value at the specified focus of the `Buffer`. If the `Buffer` was
