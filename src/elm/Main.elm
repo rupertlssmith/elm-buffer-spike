@@ -141,40 +141,40 @@ update msg model =
         MoveUp ->
             ( model, Cmd.none )
                 |> andThen (moveCursorRowBy -1)
-                |> andThen refocusBuffer
+                --|> andThen refocusBuffer
                 |> andThen scrollIfNecessary
                 |> andThen activity
 
         MoveDown ->
             ( model, Cmd.none )
                 |> andThen (moveCursorRowBy 1)
-                |> andThen refocusBuffer
+                --|> andThen refocusBuffer
                 |> andThen scrollIfNecessary
                 |> andThen activity
 
         MoveLeft ->
             ( model, Cmd.none )
                 |> andThen (moveCursorColBy -1)
-                |> andThen refocusBuffer
+                --|> andThen refocusBuffer
                 |> andThen activity
 
         MoveRight ->
             ( model, Cmd.none )
                 |> andThen (moveCursorColBy 1)
-                |> andThen refocusBuffer
+                --|> andThen refocusBuffer
                 |> andThen activity
 
         PageUp ->
             ( model, Cmd.none )
                 |> andThen (moveCursorRowBy -model.linesPerPage)
-                |> andThen refocusBuffer
+                --|> andThen refocusBuffer
                 |> andThen scrollIfNecessary
                 |> andThen activity
 
         PageDown ->
             ( model, Cmd.none )
                 |> andThen (moveCursorRowBy model.linesPerPage)
-                |> andThen refocusBuffer
+                --|> andThen refocusBuffer
                 |> andThen scrollIfNecessary
                 |> andThen activity
 
