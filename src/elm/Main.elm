@@ -34,8 +34,8 @@ config =
     { fontSize = fontSize
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
-    , lineLength = 5
-    , numLines = 1
+    , lineLength = 120
+    , numLines = 10000
     , blinkInterval = 400
     }
 

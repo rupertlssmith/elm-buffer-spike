@@ -103,40 +103,41 @@ refocus row col buffer =
 
 
 -- Make changes to a buffers contents
---
---
--- breakLine : Int -> Int -> TextBuffer -> TextBuffer
--- breakLine line column buffer =
---     let
---         line_ =
---             line + 1
---
---         linesList =
---             allLines buffer
---
---         contentUntilCursor =
---             linesList
---                 |> List.take line_
---                 |> List.indexedMap
---                     (\i content ->
---                         if i == line then
---                             String.left column content
---
---                         else
---                             content
---                     )
---
---         restOfLineAfterCursor =
---             String.dropLeft column (getLine line buffer)
---
---         restOfLines =
---             List.drop line_ linesList
---     in
---     (contentUntilCursor
---         ++ [ restOfLineAfterCursor ]
---         ++ restOfLines
---     )
---         |> fromList
+
+
+breakLine : Int -> Int -> TextBuffer -> TextBuffer
+breakLine line column buffer =
+    --     let
+    --         line_ =
+    --             line + 1
+    --
+    --         linesList =
+    --             allLines buffer
+    --
+    --         contentUntilCursor =
+    --             linesList
+    --                 |> List.take line_
+    --                 |> List.indexedMap
+    --                     (\i content ->
+    --                         if i == line then
+    --                             String.left column content
+    --
+    --                         else
+    --                             content
+    --                     )
+    --
+    --         restOfLineAfterCursor =
+    --             String.dropLeft column (getLine line buffer)
+    --
+    --         restOfLines =
+    --             List.drop line_ linesList
+    --     in
+    --     (contentUntilCursor
+    --         ++ [ restOfLineAfterCursor ]
+    --         ++ restOfLines
+    --     )
+    --         |> fromList
+    buffer
 
 
 insertCharAt : Char -> Int -> Int -> TextBuffer -> TextBuffer
