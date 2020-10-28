@@ -1,12 +1,13 @@
 module Main exposing (main)
 
+--import GapBuffer exposing (Buffer)
+
 import Array exposing (Array)
 import Browser exposing (Document)
 import Browser.Dom exposing (Viewport)
 import Browser.Events
 import Css
 import Css.Global
-import GapBuffer exposing (Buffer)
 import Html as H exposing (Attribute, Html)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -18,7 +19,7 @@ import Random exposing (Generator, Seed)
 import Random.Array
 import Regex exposing (Regex)
 import Task exposing (Task)
-import TextBuffer
+import TextBuffer exposing (TextBuffer)
 import Time exposing (Posix)
 
 
@@ -50,7 +51,7 @@ main =
 
 
 type alias Model =
-    { buffer : Buffer String (Buffer Char Char)
+    { buffer : TextBuffer
     , top : Float
     , height : Float
     , cursor : RowCol
@@ -62,10 +63,6 @@ type alias Model =
     }
 
 
-type alias TextBuffer =
-    Buffer String (Buffer Char Char)
-
-
 type alias RowCol =
     { row : Int
     , col : Int
@@ -73,7 +70,7 @@ type alias RowCol =
 
 
 init _ =
-    ( { buffer = GapBuffer.empty stringToCharBuffer charBufferToString
+    ( { buffer = TextBuffer.empty
       , top = 0
       , height = 0
       , cursor = { row = 0, col = 0 }
@@ -89,22 +86,6 @@ init _ =
         , Browser.Dom.focus "editor-main" |> Task.attempt (always NoOp)
         ]
     )
-
-
-stringToCharBuffer : String -> Buffer Char Char
-stringToCharBuffer string =
-    String.toList string |> GapBuffer.fromList identity identity
-
-
-charBufferToString : Buffer Char Char -> String
-charBufferToString charBuffer =
-    GapBuffer.foldrSlice
-        (\_ char accum -> char :: accum)
-        []
-        0
-        (GapBuffer.length charBuffer)
-        charBuffer
-        |> String.fromList
 
 
 subscriptions _ =
@@ -125,6 +106,7 @@ type Msg
     | MoveRight
     | PageUp
     | PageDown
+    | InsertChar Char
     | Blink Posix
     | Activity Posix
     | NoOp
@@ -196,6 +178,10 @@ update msg model =
                 |> andThen scrollIfNecessary
                 |> andThen activity
 
+        InsertChar char ->
+            ( model, Cmd.none )
+                |> andThen (insertChar char)
+
         Blink posix ->
             if Time.posixToMillis posix - Time.posixToMillis model.lastActive > config.blinkInterval then
                 ( { model | blinker = not model.blinker }, Cmd.none )
@@ -225,7 +211,7 @@ moveCursorRowBy val model =
         newRow =
             clamp
                 0
-                (GapBuffer.length model.buffer - 1)
+                (TextBuffer.lastLine model.buffer)
                 (model.cursor.row + val)
     in
     ( { model | cursor = { row = newRow, col = model.cursor.col } }
@@ -246,13 +232,7 @@ moveCursorColBy val model =
 
 refocusBuffer : Model -> ( Model, Cmd Msg )
 refocusBuffer model =
-    let
-        refocussedBuffer =
-            GapBuffer.updateFocus model.cursor.row
-                (\rowBuffer -> GapBuffer.updateFocus model.cursor.col identity rowBuffer)
-                model.buffer
-    in
-    ( { model | buffer = refocussedBuffer }
+    ( { model | buffer = TextBuffer.refocus model.cursor.row model.cursor.col model.buffer }
     , Cmd.none
     )
 
@@ -281,6 +261,11 @@ scrollIfNecessary model =
     ( { model | scrollRow = newScrollRow }
     , scrollCmd
     )
+
+
+insertChar : Char -> Model -> ( Model, Cmd Msg )
+insertChar char model =
+    ( { model | buffer = TextBuffer.insertCharAt char model.cursor.row model.cursor.col model.buffer }, Time.now |> Task.perform Activity )
 
 
 activity : Model -> ( Model, Cmd Msg )
@@ -436,7 +421,7 @@ viewContent model =
             ((model.top + model.height) / config.lineHeight |> floor) + pad
 
         height =
-            (GapBuffer.length model.buffer |> toFloat) * config.lineHeight
+            (TextBuffer.length model.buffer |> toFloat) * config.lineHeight
     in
     H.div
         [ HA.id "content-main"
@@ -452,7 +437,7 @@ keyedViewLines start end buffer =
     List.range start end
         |> List.foldr
             (\idx accum ->
-                case GapBuffer.get idx buffer of
+                case TextBuffer.getLine idx buffer of
                     Nothing ->
                         accum
 
@@ -513,27 +498,32 @@ keyDecoder =
 
 keyToMsg : String -> Decoder ( Msg, Bool )
 keyToMsg string =
-    case string of
-        "ArrowUp" ->
-            Decode.succeed ( MoveUp, True )
-
-        "ArrowDown" ->
-            Decode.succeed ( MoveDown, True )
-
-        "ArrowLeft" ->
-            Decode.succeed ( MoveLeft, True )
-
-        "ArrowRight" ->
-            Decode.succeed ( MoveRight, True )
-
-        "PageUp" ->
-            Decode.succeed ( PageUp, True )
-
-        "PageDown" ->
-            Decode.succeed ( PageDown, True )
+    case String.uncons string of
+        Just ( char, "" ) ->
+            Decode.succeed ( InsertChar char, True )
 
         _ ->
-            Decode.fail "This key does nothing"
+            case string of
+                "ArrowUp" ->
+                    Decode.succeed ( MoveUp, True )
+
+                "ArrowDown" ->
+                    Decode.succeed ( MoveDown, True )
+
+                "ArrowLeft" ->
+                    Decode.succeed ( MoveLeft, True )
+
+                "ArrowRight" ->
+                    Decode.succeed ( MoveRight, True )
+
+                "PageUp" ->
+                    Decode.succeed ( PageUp, True )
+
+                "PageDown" ->
+                    Decode.succeed ( PageDown, True )
+
+                _ ->
+                    Decode.fail "This key does nothing"
 
 
 
@@ -577,7 +567,7 @@ randomBuffer width length =
     in
     line 0 [] wordGenerator
         |> Random.Array.array length
-        |> Random.map (GapBuffer.fromArray stringToCharBuffer charBufferToString)
+        |> Random.map TextBuffer.fromArray
 
 
 lorumIpsum : String

@@ -90,6 +90,18 @@ fromArray array =
 
 
 
+-- Shift the buffer focus
+
+
+{-| Shift the buffer focues without changing the contents.
+-}
+refocus row col buffer =
+    GapBuffer.updateFocus row
+        (\rowBuffer -> GapBuffer.updateFocus col identity rowBuffer)
+        buffer
+
+
+
 -- Make changes to a buffers contents
 --
 --
@@ -115,7 +127,7 @@ fromArray array =
 --                     )
 --
 --         restOfLineAfterCursor =
---             String.dropLeft column (lineContent buffer line)
+--             String.dropLeft column (getLine line buffer)
 --
 --         restOfLines =
 --             List.drop line_ linesList
@@ -125,29 +137,23 @@ fromArray array =
 --         ++ restOfLines
 --     )
 --         |> fromList
---
---
--- insertCharAt : Char -> Int -> Int -> TextBuffer -> TextBuffer
--- insertCharAt char line column buffer =
---     let
---         lineWithCharAdded content =
---             String.left column content
---                 ++ String.fromChar char
---                 ++ String.dropLeft column content
---     in
---     Array.get line buffer
---         |> Maybe.map lineWithCharAdded
---         |> Maybe.map (\modifiedLine -> Array.set line modifiedLine buffer)
---         |> Maybe.withDefault buffer
---
---
+
+
+insertCharAt : Char -> Int -> Int -> TextBuffer -> TextBuffer
+insertCharAt char row col buffer =
+    GapBuffer.updateFocus row
+        (\rowBuffer -> GapBuffer.updateFocus col (always char) rowBuffer)
+        buffer
+
+
+
 -- deleteCharBefore : Int -> Int -> TextBuffer -> TextBuffer
 -- deleteCharBefore line column buffer =
 --     let
 --         removeCharFromLine ( lineNum, content ) =
 --             if lineNum == line - 1 then
 --                 if isFirstColumn column then
---                     [ content ++ lineContent buffer line ]
+--                     [ content ++ getLine line buffer ]
 --
 --                 else
 --                     [ content ]
@@ -179,7 +185,7 @@ fromArray array =
 --         removeCharFromLine ( lineNum, content ) =
 --             if lineNum == line then
 --                 if isOnLastColumn then
---                     [ content ++ lineContent buffer (line + 1) ]
+--                     [ content ++ getLine  (line + 1) buffer ]
 --
 --                 else
 --                     [ String.left column content
@@ -239,7 +245,8 @@ fromArray array =
 
 charAt : Int -> Int -> TextBuffer -> String
 charAt line column buffer =
-    lineContent buffer line
+    getLine line buffer
+        |> Maybe.withDefault ""
         |> String.dropLeft column
         |> String.left 1
 
@@ -301,7 +308,7 @@ lastLine buffer =
 
 lastColumn : TextBuffer -> Int -> Int
 lastColumn buffer line =
-    lineLength buffer line
+    lineLength line buffer
 
 
 previousLine : Int -> Int
@@ -316,15 +323,15 @@ nextLine buffer line =
         |> min (lastLine buffer)
 
 
-numLines : TextBuffer -> Int
-numLines buffer =
+length : TextBuffer -> Int
+length buffer =
     GapBuffer.length buffer
 
 
 clampColumn : TextBuffer -> Int -> Int -> Int
 clampColumn buffer line column =
     column
-        |> clamp 0 (lineLength buffer line)
+        |> clamp 0 (lineLength line buffer)
 
 
 
@@ -346,15 +353,15 @@ clampColumn buffer line column =
 --
 
 
-lineContent : TextBuffer -> Int -> String
-lineContent buffer lineNum =
+getLine : Int -> TextBuffer -> Maybe String
+getLine lineNum buffer =
     GapBuffer.get lineNum buffer
+
+
+lineLength : Int -> TextBuffer -> Int
+lineLength lineNum buffer =
+    getLine lineNum buffer
         |> Maybe.withDefault ""
-
-
-lineLength : TextBuffer -> Int -> Int
-lineLength buffer lineNum =
-    lineContent buffer lineNum
         |> String.length
 
 
