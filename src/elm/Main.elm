@@ -107,6 +107,9 @@ type Msg
     | PageUp
     | PageDown
     | InsertChar Char
+    | RemoveCharBefore
+    | RemoveCharAfter
+    | NewLine
     | Blink Posix
     | Activity Posix
     | NoOp
@@ -182,6 +185,20 @@ update msg model =
             ( model, Cmd.none )
                 |> andThen (insertChar char)
                 |> andThen (moveCursorColBy 1)
+                |> andThen activity
+
+        RemoveCharBefore ->
+            ( model, Cmd.none )
+
+        RemoveCharAfter ->
+            ( model, Cmd.none )
+
+        NewLine ->
+            ( model, Cmd.none )
+                |> andThen newline
+                |> andThen (moveCursorRowBy 1)
+                |> andThen (moveCursorColBy -model.cursor.col)
+                |> andThen activity
 
         Blink posix ->
             if Time.posixToMillis posix - Time.posixToMillis model.lastActive > config.blinkInterval then
@@ -266,12 +283,23 @@ scrollIfNecessary model =
 
 insertChar : Char -> Model -> ( Model, Cmd Msg )
 insertChar char model =
-    ( { model | buffer = TextBuffer.insertCharAt char model.cursor.row model.cursor.col model.buffer }, Time.now |> Task.perform Activity )
+    ( { model | buffer = TextBuffer.insertCharAt char model.cursor.row model.cursor.col model.buffer }
+    , Cmd.none
+    )
+
+
+newline : Model -> ( Model, Cmd Msg )
+newline model =
+    ( { model | buffer = TextBuffer.breakLine model.cursor.row model.cursor.col model.buffer }
+    , Cmd.none
+    )
 
 
 activity : Model -> ( Model, Cmd Msg )
 activity model =
-    ( { model | blinker = True }, Time.now |> Task.perform Activity )
+    ( { model | blinker = True }
+    , Time.now |> Task.perform Activity
+    )
 
 
 {-| The difference between the height and the height floored to line height.
@@ -522,6 +550,15 @@ keyToMsg string =
 
                 "PageDown" ->
                     Decode.succeed ( PageDown, True )
+
+                "Backspace" ->
+                    Decode.succeed ( RemoveCharBefore, True )
+
+                "Delete" ->
+                    Decode.succeed ( RemoveCharAfter, True )
+
+                "Enter" ->
+                    Decode.succeed ( NewLine, True )
 
                 _ ->
                     Decode.fail "This key does nothing"

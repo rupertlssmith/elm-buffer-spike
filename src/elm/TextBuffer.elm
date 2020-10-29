@@ -106,38 +106,24 @@ refocus row col buffer =
 
 
 breakLine : Int -> Int -> TextBuffer -> TextBuffer
-breakLine line column buffer =
-    --     let
-    --         line_ =
-    --             line + 1
-    --
-    --         linesList =
-    --             allLines buffer
-    --
-    --         contentUntilCursor =
-    --             linesList
-    --                 |> List.take line_
-    --                 |> List.indexedMap
-    --                     (\i content ->
-    --                         if i == line then
-    --                             String.left column content
-    --
-    --                         else
-    --                             content
-    --                     )
-    --
-    --         restOfLineAfterCursor =
-    --             String.dropLeft column (getLine line buffer)
-    --
-    --         restOfLines =
-    --             List.drop line_ linesList
-    --     in
-    --     (contentUntilCursor
-    --         ++ [ restOfLineAfterCursor ]
-    --         ++ restOfLines
-    --     )
-    --         |> fromList
-    buffer
+breakLine row col buffer =
+    case GapBuffer.getFocus row buffer of
+        ( _, Nothing ) ->
+            buffer
+
+        ( focussedBuffer, Just rowBuffer ) ->
+            let
+                lineBeforeCursor =
+                    GapBuffer.slice 0 col rowBuffer
+                        |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+
+                lineAfterCursor =
+                    GapBuffer.slice col rowBuffer.length rowBuffer
+                        |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+            in
+            focussedBuffer
+                |> GapBuffer.setFocus row lineBeforeCursor
+                |> GapBuffer.insertAtFocus (row + 1) lineAfterCursor
 
 
 insertCharAt : Char -> Int -> Int -> TextBuffer -> TextBuffer
