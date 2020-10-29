@@ -195,6 +195,9 @@ update msg model =
 
         RemoveCharAfter ->
             ( model, Cmd.none )
+                |> andThen delete
+                |> andThen (moveCursorColBy -1)
+                |> andThen activity
 
         NewLine ->
             ( model, Cmd.none )
@@ -306,6 +309,13 @@ backspace model =
     in
     ( { model | buffer = TextBuffer.deleteCharBefore model.cursor.row model.cursor.col model.buffer }
         |> Debug.log "after"
+    , Cmd.none
+    )
+
+
+delete : Model -> ( Model, Cmd Msg )
+delete model =
+    ( { model | buffer = TextBuffer.deleteCharAt model.cursor.row model.cursor.col model.buffer }
     , Cmd.none
     )
 

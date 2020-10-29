@@ -165,37 +165,42 @@ deleteCharBefore row col buffer =
         buffer
 
 
+deleteCharAt : Int -> Int -> TextBuffer -> TextBuffer
+deleteCharAt row col buffer =
+    --     let
+    --         isOnLastColumn =
+    --             isLastColumn buffer line column
+    --
+    --         removeCharFromLine ( lineNum, content ) =
+    --             if lineNum == line then
+    --                 if isOnLastColumn then
+    --                     [ content ++ getLine  (line + 1) buffer ]
+    --
+    --                 else
+    --                     [ String.left column content
+    --                         ++ String.dropLeft (column + 1) content
+    --                     ]
+    --
+    --             else if lineNum == line + 1 then
+    --                 if isOnLastColumn then
+    --                     []
+    --
+    --                 else
+    --                     [ content ]
+    --
+    --             else
+    --                 [ content ]
+    --     in
+    --     buffer
+    --         |> toIndexedList
+    --         |> List.concatMap removeCharFromLine
+    --         |> fromList
+    GapBuffer.updateFocus row
+        (\rowBuffer -> GapBuffer.delete col rowBuffer)
+        buffer
 
--- deleteCharAt : Int -> Int -> TextBuffer -> TextBuffer
--- deleteCharAt line column buffer =
---     let
---         isOnLastColumn =
---             isLastColumn buffer line column
---
---         removeCharFromLine ( lineNum, content ) =
---             if lineNum == line then
---                 if isOnLastColumn then
---                     [ content ++ getLine  (line + 1) buffer ]
---
---                 else
---                     [ String.left column content
---                         ++ String.dropLeft (column + 1) content
---                     ]
---
---             else if lineNum == line + 1 then
---                 if isOnLastColumn then
---                     []
---
---                 else
---                     [ content ]
---
---             else
---                 [ content ]
---     in
---     buffer
---         |> toIndexedList
---         |> List.concatMap removeCharFromLine
---         |> fromList
+
+
 --
 --
 --
