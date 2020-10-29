@@ -133,38 +133,41 @@ insertCharAt char row col buffer =
         buffer
 
 
+deleteCharBefore : Int -> Int -> TextBuffer -> TextBuffer
+deleteCharBefore row col buffer =
+    --     let
+    --         removeCharFromLine ( lineNum, content ) =
+    --             if lineNum == line - 1 then
+    --                 if isFirstColumn column then
+    --                     [ content ++ getLine line buffer ]
+    --
+    --                 else
+    --                     [ content ]
+    --
+    --             else if lineNum == line then
+    --                 if isFirstColumn column then
+    --                     []
+    --
+    --                 else
+    --                     [ String.left (column - 1) content
+    --                         ++ String.dropLeft column content
+    --                     ]
+    --
+    --             else
+    --                 [ content ]
+    --     in
+    --     buffer
+    --         |> toIndexedList
+    --         |> List.concatMap removeCharFromLine
+    --         |> fromList
+    GapBuffer.updateFocus row
+        (\rowBuffer -> GapBuffer.delete (col - 1) rowBuffer)
+        buffer
 
--- deleteCharBefore : Int -> Int -> TextBuffer -> TextBuffer
--- deleteCharBefore line column buffer =
---     let
---         removeCharFromLine ( lineNum, content ) =
---             if lineNum == line - 1 then
---                 if isFirstColumn column then
---                     [ content ++ getLine line buffer ]
---
---                 else
---                     [ content ]
---
---             else if lineNum == line then
---                 if isFirstColumn column then
---                     []
---
---                 else
---                     [ String.left (column - 1) content
---                         ++ String.dropLeft column content
---                     ]
---
---             else
---                 [ content ]
---     in
---     buffer
---         |> toIndexedList
---         |> List.concatMap removeCharFromLine
---         |> fromList
---
---
--- deleteCharAfter : Int -> Int -> TextBuffer -> TextBuffer
--- deleteCharAfter line column buffer =
+
+
+-- deleteCharAt : Int -> Int -> TextBuffer -> TextBuffer
+-- deleteCharAt line column buffer =
 --     let
 --         isOnLastColumn =
 --             isLastColumn buffer line column

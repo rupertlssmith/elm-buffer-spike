@@ -4,6 +4,7 @@ module GapBuffer exposing
     , get, isEmpty, length, slice
     , getFocus, setFocus, insertAtFocus, updateFocus
     , foldlSlice, foldrSlice
+    , delete
     )
 
 {-| Implements an efficient Buffer for text editing.
@@ -301,6 +302,28 @@ updateFocus idx fn buffer =
             zipAt idx buffer
     in
     { rezipped | zip = rezipped.zip |> Maybe.map (\zip -> { zip | val = fn zip.val }) }
+
+
+delete : Int -> Buffer a b -> Buffer a b
+delete idx buffer =
+    case get (Debug.log "idx" idx) buffer |> Debug.log "get" of
+        Nothing ->
+            buffer
+
+        Just _ ->
+            { buffer
+                | head = slice 0 idx buffer
+                , zip =
+                    get (idx + 1) buffer
+                        |> Maybe.map
+                            (\val ->
+                                { val = buffer.toZip val
+                                , at = idx
+                                , tail = slice (idx + 2) buffer.length buffer
+                                }
+                            )
+                , length = buffer.length - 1
+            }
 
 
 
