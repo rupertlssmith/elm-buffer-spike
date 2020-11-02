@@ -156,14 +156,18 @@ update msg model =
                 |> andThen activity
 
         MoveLeft ->
+            let
+                lastColPrevRow =
+                    TextBuffer.lastColumn model.buffer (model.cursor.row - 1)
+            in
             ( model, Cmd.none )
-                |> andThen (moveCursorColBy -1)
+                |> andThen (cursorLeft lastColPrevRow)
                 --|> andThen refocusBuffer
                 |> andThen activity
 
         MoveRight ->
             ( model, Cmd.none )
-                |> andThen (moveCursorColBy 1)
+                |> andThen cursorRight
                 --|> andThen refocusBuffer
                 |> andThen activity
 
@@ -188,14 +192,20 @@ update msg model =
                 |> andThen activity
 
         RemoveCharBefore ->
+            let
+                lastColPrevRow =
+                    TextBuffer.lastColumn model.buffer (model.cursor.row - 1)
+            in
             ( model, Cmd.none )
                 |> andThen backspace
-                |> andThen (moveCursorColBy -1)
+                |> andThen (cursorLeft lastColPrevRow)
+                |> andThen scrollIfNecessary
                 |> andThen activity
 
         RemoveCharAfter ->
             ( model, Cmd.none )
                 |> andThen delete
+                |> andThen scrollIfNecessary
                 |> andThen activity
 
         NewLine ->
@@ -203,6 +213,7 @@ update msg model =
                 |> andThen newline
                 |> andThen (moveCursorRowBy 1)
                 |> andThen (moveCursorColBy -model.cursor.col)
+                |> andThen scrollIfNecessary
                 |> andThen activity
 
         Blink posix ->
@@ -249,6 +260,52 @@ moveCursorColBy val model =
             max 0 (model.cursor.col + val)
     in
     ( { model | cursor = { row = model.cursor.row, col = newCol } }
+    , Cmd.none
+    )
+
+
+cursorLeft : Int -> Model -> ( Model, Cmd Msg )
+cursorLeft lastColPrevRow model =
+    --if left > TextBuffer.lastColumn model.buffer model.cursor.row
+    let
+        left =
+            model.cursor.col - 1
+
+        cursor =
+            if left < 0 && model.cursor.row <= 0 then
+                { row = 0, col = 0 }
+
+            else if left < 0 then
+                { row = model.cursor.row - 1, col = lastColPrevRow }
+
+            else
+                { row = model.cursor.row, col = left }
+    in
+    ( { model | cursor = cursor }
+    , Cmd.none
+    )
+
+
+cursorRight : Model -> ( Model, Cmd Msg )
+cursorRight model =
+    let
+        right =
+            model.cursor.col + 1
+
+        rightMost =
+            TextBuffer.lastColumn model.buffer model.cursor.row
+
+        cursor =
+            if right > rightMost && model.cursor.row >= (TextBuffer.length model.buffer - 1) then
+                model.cursor
+
+            else if right > rightMost then
+                { row = model.cursor.row + 1, col = 0 }
+
+            else
+                { row = model.cursor.row, col = right }
+    in
+    ( { model | cursor = cursor }
     , Cmd.none
     )
 
