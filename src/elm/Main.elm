@@ -196,7 +196,6 @@ update msg model =
         RemoveCharAfter ->
             ( model, Cmd.none )
                 |> andThen delete
-                |> andThen (moveCursorColBy -1)
                 |> andThen activity
 
         NewLine ->
