@@ -34,8 +34,8 @@ config =
     { fontSize = fontSize
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
-    , lineLength = 5
-    , numLines = 1
+    , lineLength = 120
+    , numLines = 10000
     , blinkInterval = 400
     }
 
@@ -303,12 +303,7 @@ newline model =
 
 backspace : Model -> ( Model, Cmd Msg )
 backspace model =
-    let
-        _ =
-            Debug.log "before" model
-    in
     ( { model | buffer = TextBuffer.deleteCharBefore model.cursor.row model.cursor.col model.buffer }
-        |> Debug.log "after"
     , Cmd.none
     )
 

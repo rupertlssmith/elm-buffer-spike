@@ -209,7 +209,7 @@ slice from to buffer =
                         Array.empty
 
                 s2 =
-                    if zip.at >= from && zip.at <= to then
+                    if zip.at >= from && zip.at < to then
                         Array.push (buffer.toArray zip.val) s1
 
                     else
@@ -306,7 +306,7 @@ updateFocus idx fn buffer =
 
 delete : Int -> Buffer a b -> Buffer a b
 delete idx buffer =
-    case get (Debug.log "idx" idx) buffer |> Debug.log "get" of
+    case get idx buffer of
         Nothing ->
             buffer
 
