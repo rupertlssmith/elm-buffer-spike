@@ -108,6 +108,8 @@ type Msg
     | PageDown
     | LineHome
     | LineEnd
+    | FileHome
+    | FileEnd
     | InsertChar Char
     | RemoveCharBefore
     | RemoveCharAfter
@@ -193,6 +195,18 @@ update msg model =
                 |> andThen activity
 
         LineEnd ->
+            ( model, Cmd.none )
+                |> andThen (moveCursorColBy (TextBuffer.lastColumn model.buffer model.cursor.row - model.cursor.col))
+                |> andThen activity
+
+        FileHome ->
+            ( model, Cmd.none )
+                |> andThen (moveCursorColBy -model.cursor.col)
+                |> andThen (moveCursorRowBy -model.cursor.row)
+                |> andThen scrollIfNecessary
+                |> andThen activity
+
+        FileEnd ->
             ( model, Cmd.none )
                 |> andThen (moveCursorColBy (TextBuffer.lastColumn model.buffer model.cursor.row - model.cursor.col))
                 |> andThen activity
@@ -607,20 +621,28 @@ scrollDecoder =
 -- Keyboard events.
 
 
+type alias KeyEvent =
+    { key : String
+    , ctrlKey : Bool
+    }
+
+
 keyDecoder : Decoder ( Msg, Bool )
 keyDecoder =
-    Decode.field "key" Decode.string
+    Decode.succeed KeyEvent
+        |> andMap (Decode.field "key" Decode.string)
+        |> andMap (Decode.field "ctrlKey" Decode.bool)
         |> Decode.andThen keyToMsg
 
 
-keyToMsg : String -> Decoder ( Msg, Bool )
-keyToMsg string =
-    case String.uncons string of
+keyToMsg : KeyEvent -> Decoder ( Msg, Bool )
+keyToMsg keyEvent =
+    case String.uncons keyEvent.key of
         Just ( char, "" ) ->
             Decode.succeed ( InsertChar char, True )
 
         _ ->
-            case string of
+            case keyEvent.key of
                 "ArrowUp" ->
                     Decode.succeed ( MoveUp, True )
 
@@ -649,10 +671,18 @@ keyToMsg string =
                     Decode.succeed ( NewLine, True )
 
                 "Home" ->
-                    Decode.succeed ( LineHome, True )
+                    if keyEvent.ctrlKey then
+                        Decode.succeed ( FileHome, True )
+
+                    else
+                        Decode.succeed ( LineHome, True )
 
                 "End" ->
-                    Decode.succeed ( LineEnd, True )
+                    if keyEvent.ctrlKey then
+                        Decode.succeed ( FileEnd, True )
+
+                    else
+                        Decode.succeed ( LineEnd, True )
 
                 _ ->
                     Decode.fail "This key does nothing"
