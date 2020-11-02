@@ -106,6 +106,8 @@ type Msg
     | MoveRight
     | PageUp
     | PageDown
+    | LineHome
+    | LineEnd
     | InsertChar Char
     | RemoveCharBefore
     | RemoveCharAfter
@@ -183,6 +185,16 @@ update msg model =
                 |> andThen (moveCursorRowBy model.linesPerPage)
                 --|> andThen refocusBuffer
                 |> andThen scrollIfNecessary
+                |> andThen activity
+
+        LineHome ->
+            ( model, Cmd.none )
+                |> andThen (moveCursorColBy -model.cursor.col)
+                |> andThen activity
+
+        LineEnd ->
+            ( model, Cmd.none )
+                |> andThen (moveCursorColBy (TextBuffer.lastColumn model.buffer model.cursor.row - model.cursor.col))
                 |> andThen activity
 
         InsertChar char ->
@@ -635,6 +647,12 @@ keyToMsg string =
 
                 "Enter" ->
                     Decode.succeed ( NewLine, True )
+
+                "Home" ->
+                    Decode.succeed ( LineHome, True )
+
+                "End" ->
+                    Decode.succeed ( LineEnd, True )
 
                 _ ->
                     Decode.fail "This key does nothing"
