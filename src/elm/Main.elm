@@ -167,12 +167,14 @@ update msg model =
             ( model, Cmd.none )
                 |> andThen (cursorLeft lastColPrevRow)
                 --|> andThen refocusBuffer
+                |> andThen scrollIfNecessary
                 |> andThen activity
 
         MoveRight ->
             ( model, Cmd.none )
                 |> andThen cursorRight
                 --|> andThen refocusBuffer
+                |> andThen scrollIfNecessary
                 |> andThen activity
 
         PageUp ->
@@ -192,23 +194,34 @@ update msg model =
         LineHome ->
             ( model, Cmd.none )
                 |> andThen (moveCursorColBy -model.cursor.col)
+                |> andThen scrollIfNecessary
                 |> andThen activity
 
         LineEnd ->
             ( model, Cmd.none )
                 |> andThen (moveCursorColBy (TextBuffer.lastColumn model.buffer model.cursor.row - model.cursor.col))
+                |> andThen scrollIfNecessary
                 |> andThen activity
 
         FileHome ->
             ( model, Cmd.none )
-                |> andThen (moveCursorColBy -model.cursor.col)
-                |> andThen (moveCursorRowBy -model.cursor.row)
+                |> andThen (moveTo { row = 0, col = 0 })
                 |> andThen scrollIfNecessary
                 |> andThen activity
 
         FileEnd ->
+            let
+                lastRow =
+                    TextBuffer.length model.buffer - 1
+            in
             ( model, Cmd.none )
-                |> andThen (moveCursorColBy (TextBuffer.lastColumn model.buffer model.cursor.row - model.cursor.col))
+                |> andThen
+                    (moveTo
+                        { row = lastRow
+                        , col = TextBuffer.lastColumn model.buffer lastRow
+                        }
+                    )
+                |> andThen scrollIfNecessary
                 |> andThen activity
 
         InsertChar char ->
@@ -263,6 +276,13 @@ andThen fn ( model, cmd ) =
             fn model
     in
     ( nextModel, Cmd.batch [ cmd, nextCmd ] )
+
+
+moveTo : RowCol -> Model -> ( Model, Cmd Msg )
+moveTo pos model =
+    ( { model | cursor = pos }
+    , Cmd.none
+    )
 
 
 moveCursorRowBy : Int -> Model -> ( Model, Cmd Msg )
