@@ -135,69 +135,56 @@ insertCharAt char row col buffer =
 
 deleteCharBefore : Int -> Int -> TextBuffer -> TextBuffer
 deleteCharBefore row col buffer =
-    --     let
-    --         removeCharFromLine ( lineNum, content ) =
-    --             if lineNum == line - 1 then
-    --                 if isFirstColumn column then
-    --                     [ content ++ getLine line buffer ]
-    --
-    --                 else
-    --                     [ content ]
-    --
-    --             else if lineNum == line then
-    --                 if isFirstColumn column then
-    --                     []
-    --
-    --                 else
-    --                     [ String.left (column - 1) content
-    --                         ++ String.dropLeft column content
-    --                     ]
-    --
-    --             else
-    --                 [ content ]
-    --     in
-    --     buffer
-    --         |> toIndexedList
-    --         |> List.concatMap removeCharFromLine
-    --         |> fromList
-    GapBuffer.updateFocus row
-        (\rowBuffer -> GapBuffer.delete (col - 1) rowBuffer)
+    if isFirstColumn col && isFirstLine row then
         buffer
+
+    else if isFirstColumn col then
+        case GapBuffer.getFocus row buffer of
+            ( _, Nothing ) ->
+                buffer
+
+            ( focussedBuffer, Just rowBuffer ) ->
+                focussedBuffer
+                    |> GapBuffer.delete row
+                    |> GapBuffer.updateFocus (row - 1)
+                        (\prevRowBuffer ->
+                            Array.append
+                                (GapBuffer.slice 0 prevRowBuffer.length prevRowBuffer)
+                                (GapBuffer.slice 0 rowBuffer.length rowBuffer)
+                                |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                        )
+
+    else
+        GapBuffer.updateFocus row
+            (\rowBuffer -> GapBuffer.delete (col - 1) rowBuffer)
+            buffer
 
 
 deleteCharAt : Int -> Int -> TextBuffer -> TextBuffer
 deleteCharAt row col buffer =
-    --     let
-    --         isOnLastColumn =
-    --             isLastColumn buffer line column
-    --
-    --         removeCharFromLine ( lineNum, content ) =
-    --             if lineNum == line then
-    --                 if isOnLastColumn then
-    --                     [ content ++ getLine  (line + 1) buffer ]
-    --
-    --                 else
-    --                     [ String.left column content
-    --                         ++ String.dropLeft (column + 1) content
-    --                     ]
-    --
-    --             else if lineNum == line + 1 then
-    --                 if isOnLastColumn then
-    --                     []
-    --
-    --                 else
-    --                     [ content ]
-    --
-    --             else
-    --                 [ content ]
-    --     in
-    --     buffer
-    --         |> toIndexedList
-    --         |> List.concatMap removeCharFromLine
-    --         |> fromList
-    GapBuffer.updateFocus row
-        (\rowBuffer -> GapBuffer.delete col rowBuffer)
+    if isLastColumn buffer row col && isLastLine buffer row then
         buffer
+
+    else if isLastColumn buffer row col then
+        case GapBuffer.getFocus (row + 1) buffer of
+            ( _, Nothing ) ->
+                buffer
+
+            ( focussedBuffer, Just nextRowBuffer ) ->
+                focussedBuffer
+                    |> GapBuffer.delete (row + 1)
+                    |> GapBuffer.updateFocus row
+                        (\rowBuffer ->
+                            Array.append
+                                (GapBuffer.slice 0 rowBuffer.length rowBuffer)
+                                (GapBuffer.slice 0 nextRowBuffer.length nextRowBuffer)
+                                |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                        )
+
+    else
+        GapBuffer.updateFocus row
+            (\rowBuffer -> GapBuffer.delete col rowBuffer)
+            buffer
 
 
 
