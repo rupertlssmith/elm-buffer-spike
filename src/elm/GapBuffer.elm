@@ -1,5 +1,5 @@
 module GapBuffer exposing
-    ( Buffer
+    ( GapBuffer
     , empty, fromArray, fromList
     , get, isEmpty, length, slice
     , getFocus, setFocus, insertAtFocus, updateFocus
@@ -7,12 +7,12 @@ module GapBuffer exposing
     , delete
     )
 
-{-| Implements an efficient Buffer for text editing.
+{-| Implements an efficient buffer for text editing.
 
 
 # Make a Buffer
 
-@docs Buffer
+@docs GapBuffer
 @docs empty, fromArray, fromList
 
 
@@ -35,7 +35,7 @@ module GapBuffer exposing
 import Array exposing (Array)
 
 
-type alias Buffer a b =
+type alias GapBuffer a b =
     { head : Array a
     , zip :
         Maybe
@@ -49,7 +49,7 @@ type alias Buffer a b =
     }
 
 
-zipAt : Int -> Buffer a b -> Buffer a b
+zipAt : Int -> GapBuffer a b -> GapBuffer a b
 zipAt idx buffer =
     if idx < 0 || idx >= buffer.length then
         buffer
@@ -67,7 +67,7 @@ zipAt idx buffer =
                     rezip idx buffer
 
 
-rezip : Int -> Buffer a b -> Buffer a b
+rezip : Int -> GapBuffer a b -> GapBuffer a b
 rezip idx buffer =
     { buffer
         | head = slice 0 idx buffer
@@ -84,12 +84,12 @@ rezip idx buffer =
 
 
 
--- Make a Buffer
+-- Make a GapBuffer
 
 
-{-| Creates an empty `Buffer`.
+{-| Creates an empty `GapBuffer`.
 -}
-empty : (a -> b) -> (b -> a) -> Buffer a b
+empty : (a -> b) -> (b -> a) -> GapBuffer a b
 empty toZip toArray =
     { head = Array.empty
     , zip = Nothing
@@ -99,9 +99,9 @@ empty toZip toArray =
     }
 
 
-{-| Creates a `Buffer` from a `List`.
+{-| Creates a `GapBuffer` from a `List`.
 -}
-fromList : (a -> b) -> (b -> a) -> List a -> Buffer a b
+fromList : (a -> b) -> (b -> a) -> List a -> GapBuffer a b
 fromList toZip toArray list =
     let
         array =
@@ -115,9 +115,9 @@ fromList toZip toArray list =
     }
 
 
-{-| Creates a `Buffer` from an `Array`.
+{-| Creates a `GapBuffer` from an `Array`.
 -}
-fromArray : (a -> b) -> (b -> a) -> Array a -> Buffer a b
+fromArray : (a -> b) -> (b -> a) -> Array a -> GapBuffer a b
 fromArray toZip toArray array =
     { head = array
     , zip = Nothing
@@ -131,24 +131,24 @@ fromArray toZip toArray array =
 -- Query
 
 
-{-| Checks if a `Buffer` is empty.
+{-| Checks if a `GapBuffer` is empty.
 -}
-isEmpty : Buffer a b -> Bool
+isEmpty : GapBuffer a b -> Bool
 isEmpty buffer =
     buffer.length == 0
 
 
-{-| Gets the number of element in the `Buffer`.
+{-| Gets the number of element in the `GapBuffer`.
 -}
-length : Buffer a b -> Int
+length : GapBuffer a b -> Int
 length buffer =
     buffer.length
 
 
-{-| Extracts the element at the specified index in the `Buffer`.
-If the `Buffer` does not hold data for this index, `Nothing` is returned.
+{-| Extracts the element at the specified index in the `GapBuffer`.
+If the `GapBuffer` does not hold data for this index, `Nothing` is returned.
 -}
-get : Int -> Buffer a b -> Maybe a
+get : Int -> GapBuffer a b -> Maybe a
 get idx buffer =
     case buffer.zip of
         Nothing ->
@@ -168,7 +168,7 @@ get idx buffer =
 {-| Extracts a slice of data from the buffer, between the _from_ and _to_ indices
 specified.
 
-If these indicies go outside the range of the `Buffer`, data from the
+If these indicies go outside the range of the `GapBuffer`, data from the
 actual available range will be returned.
 
 If you are iterating over the contents of the buffer, to render a
@@ -177,7 +177,7 @@ UI for example, there is no need to copy the contents into an intermediate
 `foldlSlice` function instead.
 
 -}
-slice : Int -> Int -> Buffer a b -> Array a
+slice : Int -> Int -> GapBuffer a b -> Array a
 slice from to buffer =
     let
         intersects s1 e1 s2 e2 =
@@ -235,15 +235,15 @@ slice from to buffer =
 -- Manipulate
 
 
-{-| Sets the value as the focus of the `Buffer`.
-If the `Buffer` was already focussed at a different index, that index will be
+{-| Sets the value as the focus of the `GapBuffer`.
+If the `GapBuffer` was already focussed at a different index, that index will be
 de-focussed, and the focus shifted to the specified index.
 
-Note that de-focussing and re-focussing the `Buffer` will use the `toZip` and
+Note that de-focussing and re-focussing the `GapBuffer` will use the `toZip` and
 `toArray` functions that were specified when creating the buffer.
 
 -}
-setFocus : Int -> b -> Buffer a b -> Buffer a b
+setFocus : Int -> b -> GapBuffer a b -> GapBuffer a b
 setFocus idx val buffer =
     let
         rezipped =
@@ -252,7 +252,7 @@ setFocus idx val buffer =
     { rezipped | zip = rezipped.zip |> Maybe.map (\zip -> { zip | val = val }) }
 
 
-insertAtFocus : Int -> b -> Buffer a b -> Buffer a b
+insertAtFocus : Int -> b -> GapBuffer a b -> GapBuffer a b
 insertAtFocus idx val buffer =
     if idx < 0 || idx > buffer.length then
         buffer
@@ -270,15 +270,15 @@ insertAtFocus idx val buffer =
         }
 
 
-{-| Gets the value at the specified focus of the `Buffer`. If the `Buffer` was
+{-| Gets the value at the specified focus of the `GapBuffer`. If the `GapBuffer` was
 already focussed at a different index, that index will be de-focussed, and the
 focus shifted to the specified index.
 
-Note that de-focussing and re-focussing the `Buffer` will use the `toZip` and
+Note that de-focussing and re-focussing the `GapBuffer` will use the `toZip` and
 `toArray` functions that were specified when creating the buffer.
 
 -}
-getFocus : Int -> Buffer a b -> ( Buffer a b, Maybe b )
+getFocus : Int -> GapBuffer a b -> ( GapBuffer a b, Maybe b )
 getFocus idx buffer =
     let
         rezipped =
@@ -287,15 +287,15 @@ getFocus idx buffer =
     ( rezipped, rezipped.zip |> Maybe.map .val )
 
 
-{-| Update the value at the specified focus of the `Buffer`. If the `Buffer` was
+{-| Update the value at the specified focus of the `GapBuffer`. If the `GapBuffer` was
 already focussed at a different index, that index will be de-focussed, and the
 focus shifted to the specified index.
 
-Note that de-focussing and re-focussing the `Buffer` will use the `toZip` and
+Note that de-focussing and re-focussing the `GapBuffer` will use the `toZip` and
 `toArray` functions that were specified when creating the buffer.
 
 -}
-updateFocus : Int -> (b -> b) -> Buffer a b -> Buffer a b
+updateFocus : Int -> (b -> b) -> GapBuffer a b -> GapBuffer a b
 updateFocus idx fn buffer =
     let
         rezipped =
@@ -304,7 +304,7 @@ updateFocus idx fn buffer =
     { rezipped | zip = rezipped.zip |> Maybe.map (\zip -> { zip | val = fn zip.val }) }
 
 
-delete : Int -> Buffer a b -> Buffer a b
+delete : Int -> GapBuffer a b -> GapBuffer a b
 delete idx buffer =
     case get idx buffer of
         Nothing ->
@@ -330,15 +330,15 @@ delete idx buffer =
 -- Iterate
 
 
-{-| Iterates forward over a region of the `Buffer`.
+{-| Iterates forward over a region of the `GapBuffer`.
 
 This is the most efficient way to extract and map data from the buffer. For
-example, you would use this when rendering the visible contents of a `Buffer`
+example, you would use this when rendering the visible contents of a `GapBuffer`
 to Html. The implementation does not create intermediate data structures to hold
 the extracted elements, and it only iterates over the range you specify.
 
 -}
-foldlSlice : (Int -> a -> acc -> acc) -> acc -> Int -> Int -> Buffer a b -> acc
+foldlSlice : (Int -> a -> acc -> acc) -> acc -> Int -> Int -> GapBuffer a b -> acc
 foldlSlice fn acc from to buffer =
     List.foldl
         (\idx resAcc ->
@@ -353,15 +353,15 @@ foldlSlice fn acc from to buffer =
         (List.range from to)
 
 
-{-| Iterates backward over a region of the `Buffer`.
+{-| Iterates backward over a region of the `GapBuffer`.
 
 This is the most efficient way to extract and map data from the buffer. For
-example, you would use this when rendering the visible contents of a `Buffer`
+example, you would use this when rendering the visible contents of a `GapBuffer`
 to Html. The implementation does not create intermediate data structures to hold
 the extracted elements, and it only iterates over the range you specify.
 
 -}
-foldrSlice : (Int -> a -> acc -> acc) -> acc -> Int -> Int -> Buffer a b -> acc
+foldrSlice : (Int -> a -> acc -> acc) -> acc -> Int -> Int -> GapBuffer a b -> acc
 foldrSlice fn acc from to buffer =
     List.foldr
         (\idx resAcc ->

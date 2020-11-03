@@ -39,7 +39,7 @@ module TextBuffer exposing (..)
 -- )
 
 import Array exposing (Array)
-import GapBuffer exposing (Buffer)
+import GapBuffer exposing (GapBuffer)
 import Regex
 
 
@@ -48,15 +48,15 @@ import Regex
 
 
 type alias TextBuffer =
-    Buffer String (Buffer Char Char)
+    GapBuffer String (GapBuffer Char Char)
 
 
-stringToCharBuffer : String -> Buffer Char Char
+stringToCharBuffer : String -> GapBuffer Char Char
 stringToCharBuffer string =
     String.toList string |> GapBuffer.fromList identity identity
 
 
-charBufferToString : Buffer Char Char -> String
+charBufferToString : GapBuffer Char Char -> String
 charBufferToString charBuffer =
     GapBuffer.foldrSlice
         (\_ char accum -> char :: accum)
