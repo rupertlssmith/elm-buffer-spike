@@ -327,7 +327,6 @@ moveCursorColBy val model =
 
 cursorLeft : Int -> Model -> ( Model, Cmd Msg )
 cursorLeft lastColPrevRow model =
-    --if left > TextBuffer.lastColumn model.buffer model.cursor.row
     let
         left =
             model.cursor.col - 1
