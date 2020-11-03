@@ -56,6 +56,7 @@ type alias Model =
     , height : Float
     , cursor : RowCol
     , scrollRow : Int
+    , targetCol : Int
     , linesPerPage : Int
     , bottomOffset : Float
     , blinker : Bool
@@ -75,6 +76,7 @@ init _ =
       , height = 0
       , cursor = { row = 0, col = 0 }
       , scrollRow = 0
+      , targetCol = 0
       , linesPerPage = 0
       , bottomOffset = 0.0
       , blinker = False
@@ -280,7 +282,10 @@ andThen fn ( model, cmd ) =
 
 moveTo : RowCol -> Model -> ( Model, Cmd Msg )
 moveTo pos model =
-    ( { model | cursor = pos }
+    ( { model
+        | cursor = pos
+        , targetCol = pos.col
+      }
     , Cmd.none
     )
 
@@ -293,8 +298,13 @@ moveCursorRowBy val model =
                 0
                 (TextBuffer.lastLine model.buffer)
                 (model.cursor.row + val)
+
+        newCol =
+            clamp 0
+                (TextBuffer.lastColumn model.buffer newRow)
+                (max model.cursor.col model.targetCol)
     in
-    ( { model | cursor = { row = newRow, col = model.cursor.col } }
+    ( { model | cursor = { row = newRow, col = newCol } }
     , Cmd.none
     )
 
@@ -303,9 +313,14 @@ moveCursorColBy : Int -> Model -> ( Model, Cmd Msg )
 moveCursorColBy val model =
     let
         newCol =
-            max 0 (model.cursor.col + val)
+            clamp 0
+                (TextBuffer.lastColumn model.buffer model.cursor.row)
+                (model.cursor.col + val)
     in
-    ( { model | cursor = { row = model.cursor.row, col = newCol } }
+    ( { model
+        | cursor = { row = model.cursor.row, col = newCol }
+        , targetCol = newCol
+      }
     , Cmd.none
     )
 
@@ -327,7 +342,10 @@ cursorLeft lastColPrevRow model =
             else
                 { row = model.cursor.row, col = left }
     in
-    ( { model | cursor = cursor }
+    ( { model
+        | cursor = cursor
+        , targetCol = cursor.col
+      }
     , Cmd.none
     )
 
@@ -351,7 +369,10 @@ cursorRight model =
             else
                 { row = model.cursor.row, col = right }
     in
-    ( { model | cursor = cursor }
+    ( { model
+        | cursor = cursor
+        , targetCol = cursor.col
+      }
     , Cmd.none
     )
 
