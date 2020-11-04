@@ -44,8 +44,8 @@ type alias GapBuffer a b =
             , tail : Array a
             }
     , length : Int
-    , toZip : a -> b
-    , toArray : b -> a
+    , toFocus : a -> b
+    , fromFocus : b -> a
     }
 
 
@@ -75,7 +75,7 @@ rezip idx buffer =
             get idx buffer
                 |> Maybe.map
                     (\val ->
-                        { val = buffer.toZip val
+                        { val = buffer.toFocus val
                         , at = idx
                         , tail = slice (idx + 1) buffer.length buffer
                         }
@@ -90,19 +90,19 @@ rezip idx buffer =
 {-| Creates an empty `GapBuffer`.
 -}
 empty : (a -> b) -> (b -> a) -> GapBuffer a b
-empty toZip toArray =
+empty toFocus fromFocus =
     { head = Array.empty
     , zip = Nothing
     , length = 0
-    , toZip = toZip
-    , toArray = toArray
+    , toFocus = toFocus
+    , fromFocus = fromFocus
     }
 
 
 {-| Creates a `GapBuffer` from a `List`.
 -}
 fromList : (a -> b) -> (b -> a) -> List a -> GapBuffer a b
-fromList toZip toArray list =
+fromList toFocus fromFocus list =
     let
         array =
             Array.fromList list
@@ -110,20 +110,20 @@ fromList toZip toArray list =
     { head = array
     , zip = Nothing
     , length = Array.length array
-    , toZip = toZip
-    , toArray = toArray
+    , toFocus = toFocus
+    , fromFocus = fromFocus
     }
 
 
 {-| Creates a `GapBuffer` from an `Array`.
 -}
 fromArray : (a -> b) -> (b -> a) -> Array a -> GapBuffer a b
-fromArray toZip toArray array =
+fromArray toFocus fromFocus array =
     { head = array
     , zip = Nothing
     , length = Array.length array
-    , toZip = toZip
-    , toArray = toArray
+    , toFocus = toFocus
+    , fromFocus = fromFocus
     }
 
 
@@ -159,7 +159,7 @@ get idx buffer =
                 Array.get idx buffer.head
 
             else if idx == zip.at then
-                buffer.toArray zip.val |> Just
+                buffer.fromFocus zip.val |> Just
 
             else
                 Array.get (idx - zip.at - 1) zip.tail
@@ -210,7 +210,7 @@ slice from to buffer =
 
                 s2 =
                     if zip.at >= from && zip.at < to then
-                        Array.push (buffer.toArray zip.val) s1
+                        Array.push (buffer.fromFocus zip.val) s1
 
                     else
                         s1
@@ -239,8 +239,8 @@ slice from to buffer =
 If the `GapBuffer` was already focussed at a different index, that index will be
 de-focussed, and the focus shifted to the specified index.
 
-Note that de-focussing and re-focussing the `GapBuffer` will use the `toZip` and
-`toArray` functions that were specified when creating the buffer.
+Note that de-focussing and re-focussing the `GapBuffer` will use the `toFocus` and
+`fromFocus` functions that were specified when creating the buffer.
 
 -}
 setFocus : Int -> b -> GapBuffer a b -> GapBuffer a b
@@ -274,8 +274,8 @@ insertAtFocus idx val buffer =
 already focussed at a different index, that index will be de-focussed, and the
 focus shifted to the specified index.
 
-Note that de-focussing and re-focussing the `GapBuffer` will use the `toZip` and
-`toArray` functions that were specified when creating the buffer.
+Note that de-focussing and re-focussing the `GapBuffer` will use the `toFocus` and
+`fromFocus` functions that were specified when creating the buffer.
 
 -}
 getFocus : Int -> GapBuffer a b -> ( GapBuffer a b, Maybe b )
@@ -291,8 +291,8 @@ getFocus idx buffer =
 already focussed at a different index, that index will be de-focussed, and the
 focus shifted to the specified index.
 
-Note that de-focussing and re-focussing the `GapBuffer` will use the `toZip` and
-`toArray` functions that were specified when creating the buffer.
+Note that de-focussing and re-focussing the `GapBuffer` will use the `toFocus` and
+`fromFocus` functions that were specified when creating the buffer.
 
 -}
 updateFocus : Int -> (b -> b) -> GapBuffer a b -> GapBuffer a b
@@ -317,7 +317,7 @@ delete idx buffer =
                     get (idx + 1) buffer
                         |> Maybe.map
                             (\val ->
-                                { val = buffer.toZip val
+                                { val = buffer.toFocus val
                                 , at = idx
                                 , tail = slice (idx + 2) buffer.length buffer
                                 }

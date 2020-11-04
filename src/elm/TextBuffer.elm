@@ -135,11 +135,11 @@ breakLine row col buffer =
                     let
                         lineBeforeCursor =
                             GapBuffer.slice 0 col rowBuffer
-                                |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                                |> GapBuffer.fromArray rowBuffer.toFocus rowBuffer.fromFocus
 
                         lineAfterCursor =
                             GapBuffer.slice col rowBuffer.length rowBuffer
-                                |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                                |> GapBuffer.fromArray rowBuffer.toFocus rowBuffer.fromFocus
                     in
                     focussedBuffer
                         |> GapBuffer.setFocus row lineBeforeCursor
@@ -179,7 +179,7 @@ deleteCharBefore row col buffer =
                                     Array.append
                                         (GapBuffer.slice 0 prevRowBuffer.length prevRowBuffer)
                                         (GapBuffer.slice 0 rowBuffer.length rowBuffer)
-                                        |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                                        |> GapBuffer.fromArray rowBuffer.toFocus rowBuffer.fromFocus
                                 )
 
             else
@@ -210,7 +210,7 @@ deleteCharAt row col buffer =
                                     Array.append
                                         (GapBuffer.slice 0 rowBuffer.length rowBuffer)
                                         (GapBuffer.slice 0 nextRowBuffer.length nextRowBuffer)
-                                        |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                                        |> GapBuffer.fromArray rowBuffer.toFocus rowBuffer.fromFocus
                                 )
 
             else
