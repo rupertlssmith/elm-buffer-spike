@@ -128,7 +128,12 @@ update msg model =
             ( { model | buffer = buffer }, Cmd.none )
 
         Scroll scroll ->
-            ( { model | top = scroll.scrollTop }, Cmd.none )
+            ( { model
+                | top = scroll.scrollTop
+                , scrollRow = scroll.scrollTop / config.lineHeight |> round
+              }
+            , Cmd.none
+            )
 
         ContentViewPort result ->
             case result of
