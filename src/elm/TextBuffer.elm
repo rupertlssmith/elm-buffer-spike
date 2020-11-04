@@ -52,9 +52,6 @@ type alias TextBuffer tag ctx =
 
 
 
--- stringToCharBuffer : String -> GapBuffer Char Char
--- stringToCharBuffer string =
---     String.toList string |> GapBuffer.fromList identity (always identity)
 --
 --
 -- charBufferToString : Maybe String -> GapBuffer Char Char -> String
@@ -94,7 +91,22 @@ empty initialCtx tagLineFn =
 
 fromArray : ctx -> TagLineFn tag ctx -> Array String -> TextBuffer tag ctx
 fromArray initialCtx tagLineFn array =
-    { lines = GapBuffer.fromArray untagLine (tagLine initialCtx tagLineFn) array }
+    let
+        arrayOfCharBuffers =
+            Array.map stringToCharBuffer array
+
+        ( _, rippledArray ) =
+            Array.foldl
+                (\charBuffer ( ctx, accum ) -> ( ctx, accum ))
+                ( initialCtx, Array.empty )
+                arrayOfCharBuffers
+    in
+    { lines = GapBuffer.fromArray untagLine (tagLine initialCtx tagLineFn) rippledArray }
+
+
+stringToCharBuffer : String -> GapBuffer Char Char
+stringToCharBuffer string =
+    String.toList string |> GapBuffer.fromList identity (always identity)
 
 
 
