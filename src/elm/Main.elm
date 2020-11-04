@@ -51,7 +51,7 @@ main =
 
 
 type alias Model =
-    { buffer : TextBuffer
+    { buffer : TextBuffer () ()
     , top : Float
     , height : Float
     , cursor : RowCol
@@ -99,7 +99,7 @@ subscriptions _ =
 
 type Msg
     = Scroll ScrollEvent
-    | RandomBuffer TextBuffer
+    | RandomBuffer (TextBuffer () ())
     | ContentViewPort (Result Browser.Dom.Error Viewport)
     | Resize
     | MoveUp
@@ -608,7 +608,7 @@ viewContent model =
         ]
 
 
-keyedViewLines : Int -> Int -> TextBuffer -> Html Msg
+keyedViewLines : Int -> Int -> TextBuffer () () -> Html Msg
 keyedViewLines start end buffer =
     List.range start end
         |> List.foldr
@@ -737,7 +737,7 @@ keyToMsg keyEvent =
 -- Random buffer initialization.
 
 
-randomBuffer : Int -> Int -> Generator TextBuffer
+randomBuffer : Int -> Int -> Generator (TextBuffer () ())
 randomBuffer width length =
     let
         regex =
