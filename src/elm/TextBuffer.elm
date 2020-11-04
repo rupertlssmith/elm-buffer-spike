@@ -106,6 +106,26 @@ type alias TagLineFn tag ctx =
     GapBuffer Char Char -> ctx -> ( List ( tag, String ), ctx )
 
 
+tagLine : ctx -> TagLineFn tag ctx -> Maybe (Line tag ctx) -> GapBuffer Char Char -> Line tag ctx
+tagLine initialContext tagLineFn maybePrevLine charBuffer =
+    let
+        startCtx =
+            case maybePrevLine of
+                Just { end } ->
+                    end
+
+                Nothing ->
+                    initialContext
+
+        ( taggedStrings, endCtx ) =
+            tagLineFn charBuffer startCtx
+    in
+    { start = startCtx
+    , end = endCtx
+    , tagged = taggedStrings
+    }
+
+
 untagLine : Line tag ctx -> GapBuffer Char Char
 untagLine line =
     List.foldr
