@@ -47,48 +47,54 @@ import Regex
 -- Buffers and ways to make one.
 
 
-type alias TextBuffer =
-    { lines : GapBuffer String (GapBuffer Char Char) }
+type alias TextBuffer tag ctx =
+    { lines : GapBuffer (Line tag ctx) (GapBuffer Char Char) }
 
 
-stringToCharBuffer : String -> GapBuffer Char Char
-stringToCharBuffer string =
-    String.toList string |> GapBuffer.fromList identity (always identity)
+
+-- stringToCharBuffer : String -> GapBuffer Char Char
+-- stringToCharBuffer string =
+--     String.toList string |> GapBuffer.fromList identity (always identity)
+--
+--
+-- charBufferToString : Maybe String -> GapBuffer Char Char -> String
+-- charBufferToString prevLine charBuffer =
+--     GapBuffer.foldrSlice
+--         (\_ char accum -> char :: accum)
+--         []
+--         0
+--         (GapBuffer.length charBuffer)
+--         charBuffer
+--         |> String.fromList
 
 
-charBufferToString : Maybe String -> GapBuffer Char Char -> String
-charBufferToString prevLine charBuffer =
-    GapBuffer.foldrSlice
-        (\_ char accum -> char :: accum)
-        []
-        0
-        (GapBuffer.length charBuffer)
-        charBuffer
-        |> String.fromList
+empty : ctx -> TagLineFn tag ctx -> TextBuffer tag ctx
+empty initialCtx tagLineFn =
+    { lines = GapBuffer.empty untagLine (tagLine initialCtx tagLineFn) }
 
 
-empty : TextBuffer
-empty =
-    { lines = GapBuffer.empty stringToCharBuffer charBufferToString }
+
+--
+--
+-- fromString : ctx -> TagLineFn tag ctx -> String -> TextBuffer tag ctx
+-- fromString initialCtx tagLineFn source =
+--     { lines =
+--         newlineRegex
+--             |> (\r -> Regex.split r source)
+--             |> GapBuffer.fromList untagLine (tagLine initialCtx tagLineFn)
+--     }
+--
+--
+-- fromList : ctx -> TagLineFn tag ctx -> List String -> TextBuffer tag ctx
+-- fromList initialCtx tagLineFn lines =
+--     { lines = GapBuffer.fromList untagLine (tagLine initialCtx tagLineFn) lines }
+--
+--
 
 
-fromString : String -> TextBuffer
-fromString source =
-    { lines =
-        newlineRegex
-            |> (\r -> Regex.split r source)
-            |> GapBuffer.fromList stringToCharBuffer charBufferToString
-    }
-
-
-fromList : List String -> TextBuffer
-fromList lines =
-    { lines = GapBuffer.fromList stringToCharBuffer charBufferToString lines }
-
-
-fromArray : Array String -> TextBuffer
-fromArray array =
-    { lines = GapBuffer.fromArray stringToCharBuffer charBufferToString array }
+fromArray : ctx -> TagLineFn tag ctx -> Array String -> TextBuffer tag ctx
+fromArray initialCtx tagLineFn array =
+    { lines = GapBuffer.fromArray untagLine (tagLine initialCtx tagLineFn) array }
 
 
 
@@ -146,7 +152,7 @@ untagLine line =
 
 {-| Shift the buffer focues without changing the contents.
 -}
-refocus : Int -> Int -> TextBuffer -> TextBuffer
+refocus : Int -> Int -> TextBuffer tag ctx -> TextBuffer tag ctx
 refocus row col buffer =
     let
         lines =
@@ -161,7 +167,7 @@ refocus row col buffer =
 -- Make changes to a buffers contents
 
 
-breakLine : Int -> Int -> TextBuffer -> TextBuffer
+breakLine : Int -> Int -> TextBuffer tag ctx -> TextBuffer tag ctx
 breakLine row col buffer =
     let
         lines =
@@ -186,7 +192,7 @@ breakLine row col buffer =
     { buffer | lines = lines }
 
 
-insertCharAt : Char -> Int -> Int -> TextBuffer -> TextBuffer
+insertCharAt : Char -> Int -> Int -> TextBuffer tag ctx -> TextBuffer tag ctx
 insertCharAt char row col buffer =
     let
         lines =
@@ -197,7 +203,7 @@ insertCharAt char row col buffer =
     { buffer | lines = lines }
 
 
-deleteCharBefore : Int -> Int -> TextBuffer -> TextBuffer
+deleteCharBefore : Int -> Int -> TextBuffer tag ctx -> TextBuffer tag ctx
 deleteCharBefore row col buffer =
     let
         lines =
@@ -228,7 +234,7 @@ deleteCharBefore row col buffer =
     { buffer | lines = lines }
 
 
-deleteCharAt : Int -> Int -> TextBuffer -> TextBuffer
+deleteCharAt : Int -> Int -> TextBuffer tag ctx -> TextBuffer tag ctx
 deleteCharAt row col buffer =
     let
         lines =
@@ -266,7 +272,7 @@ deleteCharAt row col buffer =
 -- Get the contents from a buffer.
 --
 --
--- range : Int -> Int -> Int -> Int -> TextBuffer -> String
+-- range : Int -> Int -> Int -> Int -> (TextBuffer tag ctx) -> String
 -- range r1 c1 r2 c2 buffer =
 --     let
 --         numberOfLines =
@@ -295,38 +301,35 @@ deleteCharAt row col buffer =
 --         |> String.join "\n"
 --
 --
-
-
-charAt : Int -> Int -> TextBuffer -> String
-charAt line column buffer =
-    getLine line buffer
-        |> Maybe.withDefault ""
-        |> String.dropLeft column
-        |> String.left 1
-
-
-contents : TextBuffer -> String
-contents buffer =
-    foldlLines
-        (\line ( isFirst, accum ) ->
-            ( False
-            , if isFirst then
-                accum ++ line
-
-              else
-                accum ++ "\n" ++ line
-            )
-        )
-        ( True, "" )
-        buffer
-        |> Tuple.second
-
-
-
+-- charAt : Int -> Int -> TextBuffer tag ctx -> String
+-- charAt line column buffer =
+--     getLine line buffer
+--         |> Maybe.withDefault ""
+--         |> String.dropLeft column
+--         |> String.left 1
+--
+--
+-- contents : TextBuffer tag ctx -> String
+-- contents buffer =
+--     foldlLines
+--         (\line ( isFirst, accum ) ->
+--             ( False
+--             , if isFirst then
+--                 accum ++ line
+--
+--               else
+--                 accum ++ "\n" ++ line
+--             )
+--         )
+--         ( True, "" )
+--         buffer
+--         |> Tuple.second
+--
+--
 -- Iterate over the buffer contents.
 
 
-foldlSlice : (Int -> String -> acc -> acc) -> acc -> Int -> Int -> TextBuffer -> acc
+foldlSlice : (Int -> Line tag ctx -> acc -> acc) -> acc -> Int -> Int -> TextBuffer tag ctx -> acc
 foldlSlice fn accum from to buffer =
     GapBuffer.foldlSlice fn accum from to buffer.lines
 
@@ -340,7 +343,7 @@ isFirstLine line =
     line == 0
 
 
-isLastLine : TextBuffer -> Int -> Bool
+isLastLine : TextBuffer tag ctx -> Int -> Bool
 isLastLine buffer line =
     line == lastLine buffer
 
@@ -350,17 +353,17 @@ isFirstColumn column =
     column == 0
 
 
-isLastColumn : TextBuffer -> Int -> Int -> Bool
+isLastColumn : TextBuffer tag ctx -> Int -> Int -> Bool
 isLastColumn buffer line column =
     column == lastColumn buffer line
 
 
-lastLine : TextBuffer -> Int
+lastLine : TextBuffer tag ctx -> Int
 lastLine buffer =
     GapBuffer.length buffer.lines - 1
 
 
-lastColumn : TextBuffer -> Int -> Int
+lastColumn : TextBuffer tag ctx -> Int -> Int
 lastColumn buffer line =
     lineLength line buffer
 
@@ -371,18 +374,18 @@ previousLine line =
         |> max 0
 
 
-nextLine : TextBuffer -> Int -> Int
+nextLine : TextBuffer tag ctx -> Int -> Int
 nextLine buffer line =
     (line + 1)
         |> min (lastLine buffer)
 
 
-length : TextBuffer -> Int
+length : TextBuffer tag ctx -> Int
 length buffer =
     GapBuffer.length buffer.lines
 
 
-clampColumn : TextBuffer -> Int -> Int -> Int
+clampColumn : TextBuffer tag ctx -> Int -> Int -> Int
 clampColumn buffer line column =
     column
         |> clamp 0 (lineLength line buffer)
@@ -390,46 +393,45 @@ clampColumn buffer line column =
 
 
 -- Helpers
--- toIndexedList : TextBuffer -> List ( Int, String )
+-- toIndexedList : (TextBuffer tag ctx) -> List ( Int, String )
 -- toIndexedList buffer =
 --     Array.toIndexedList buffer
 --
 --
--- get : Int -> TextBuffer -> Maybe String
+-- get : Int -> (TextBuffer tag ctx) -> Maybe String
 -- get line buffer =
 --     Array.get line buffer
 --
 --
--- toList : TextBuffer -> List String
+-- toList : (TextBuffer tag ctx) -> List String
 -- toList buffer =
 --     Array.toList buffer
 --
 --
 
 
-getLine : Int -> TextBuffer -> Maybe String
+getLine : Int -> TextBuffer tag ctx -> Maybe (Line tag ctx)
 getLine lineNum buffer =
     GapBuffer.get lineNum buffer.lines
 
 
-lineLength : Int -> TextBuffer -> Int
+lineLength : Int -> TextBuffer tag ctx -> Int
 lineLength lineNum buffer =
-    getLine lineNum buffer
-        |> Maybe.withDefault ""
-        |> String.length
+    -- getLine lineNum buffer
+    --     |> Maybe.map String.length
+    --     |> Maybe.withDefault 0
+    0
 
 
 
---
---
--- allLines : TextBuffer -> List String
+-- allLines : (TextBuffer tag ctx) -> List String
 -- allLines buffer =
 --     Array.toList buffer
 --
 --
 
 
-foldlLines : (String -> a -> a) -> a -> TextBuffer -> a
+foldlLines : (Line tag ctx -> a -> a) -> a -> TextBuffer tag ctx -> a
 foldlLines fn init buffer =
     GapBuffer.foldlSlice
         (\_ line acc -> fn line acc)
@@ -442,7 +444,7 @@ foldlLines fn init buffer =
 
 --
 --
--- indexedMap : (Int -> String -> String) -> TextBuffer -> TextBuffer
+-- indexedMap : (Int -> String -> String) -> (TextBuffer tag ctx) -> (TextBuffer tag ctx)
 -- indexedMap fn buffer =
 --     Array.indexedMap fn buffer
 --
