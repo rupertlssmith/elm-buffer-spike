@@ -53,11 +53,11 @@ type alias TextBuffer =
 
 stringToCharBuffer : String -> GapBuffer Char Char
 stringToCharBuffer string =
-    String.toList string |> GapBuffer.fromList identity identity
+    String.toList string |> GapBuffer.fromList identity (always identity)
 
 
-charBufferToString : GapBuffer Char Char -> String
-charBufferToString charBuffer =
+charBufferToString : Maybe String -> GapBuffer Char Char -> String
+charBufferToString prevLine charBuffer =
     GapBuffer.foldrSlice
         (\_ char accum -> char :: accum)
         []
@@ -100,6 +100,24 @@ type alias Line tag ctx =
     , end : ctx
     , tagged : List ( tag, String )
     }
+
+
+type alias TagLineFn tag ctx =
+    GapBuffer Char Char -> ctx -> ( List ( tag, String ), ctx )
+
+
+untagLine : Line tag ctx -> GapBuffer Char Char
+untagLine line =
+    List.foldr
+        (\( _, str ) accum ->
+            List.foldr
+                (::)
+                (String.toList str)
+                accum
+        )
+        []
+        line.tagged
+        |> GapBuffer.fromList identity (always identity)
 
 
 

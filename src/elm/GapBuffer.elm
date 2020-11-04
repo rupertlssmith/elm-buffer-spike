@@ -45,7 +45,7 @@ type alias GapBuffer a b =
             }
     , length : Int
     , toFocus : a -> b
-    , fromFocus : b -> a
+    , fromFocus : Maybe a -> b -> a
     }
 
 
@@ -89,7 +89,7 @@ rezip idx buffer =
 
 {-| Creates an empty `GapBuffer`.
 -}
-empty : (a -> b) -> (b -> a) -> GapBuffer a b
+empty : (a -> b) -> (Maybe a -> b -> a) -> GapBuffer a b
 empty toFocus fromFocus =
     { head = Array.empty
     , zip = Nothing
@@ -101,7 +101,7 @@ empty toFocus fromFocus =
 
 {-| Creates a `GapBuffer` from a `List`.
 -}
-fromList : (a -> b) -> (b -> a) -> List a -> GapBuffer a b
+fromList : (a -> b) -> (Maybe a -> b -> a) -> List a -> GapBuffer a b
 fromList toFocus fromFocus list =
     let
         array =
@@ -117,7 +117,7 @@ fromList toFocus fromFocus list =
 
 {-| Creates a `GapBuffer` from an `Array`.
 -}
-fromArray : (a -> b) -> (b -> a) -> Array a -> GapBuffer a b
+fromArray : (a -> b) -> (Maybe a -> b -> a) -> Array a -> GapBuffer a b
 fromArray toFocus fromFocus array =
     { head = array
     , zip = Nothing
@@ -159,7 +159,7 @@ get idx buffer =
                 Array.get idx buffer.head
 
             else if idx == zip.at then
-                buffer.fromFocus zip.val |> Just
+                buffer.fromFocus Nothing zip.val |> Just
 
             else
                 Array.get (idx - zip.at - 1) zip.tail
@@ -210,7 +210,7 @@ slice from to buffer =
 
                 s2 =
                     if zip.at >= from && zip.at < to then
-                        Array.push (buffer.fromFocus zip.val) s1
+                        Array.push (buffer.fromFocus Nothing zip.val) s1
 
                     else
                         s1
