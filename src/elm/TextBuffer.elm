@@ -48,7 +48,7 @@ import Regex
 
 
 type alias TextBuffer =
-    GapBuffer String (GapBuffer Char Char)
+    { lines : GapBuffer String (GapBuffer Char Char) }
 
 
 stringToCharBuffer : String -> GapBuffer Char Char
@@ -69,24 +69,37 @@ charBufferToString charBuffer =
 
 empty : TextBuffer
 empty =
-    GapBuffer.empty stringToCharBuffer charBufferToString
+    { lines = GapBuffer.empty stringToCharBuffer charBufferToString }
 
 
 fromString : String -> TextBuffer
 fromString source =
-    newlineRegex
-        |> (\r -> Regex.split r source)
-        |> GapBuffer.fromList stringToCharBuffer charBufferToString
+    { lines =
+        newlineRegex
+            |> (\r -> Regex.split r source)
+            |> GapBuffer.fromList stringToCharBuffer charBufferToString
+    }
 
 
 fromList : List String -> TextBuffer
 fromList lines =
-    GapBuffer.fromList stringToCharBuffer charBufferToString lines
+    { lines = GapBuffer.fromList stringToCharBuffer charBufferToString lines }
 
 
 fromArray : Array String -> TextBuffer
 fromArray array =
-    GapBuffer.fromArray stringToCharBuffer charBufferToString array
+    { lines = GapBuffer.fromArray stringToCharBuffer charBufferToString array }
+
+
+
+-- The line model.
+
+
+type alias Line tag ctx =
+    { start : ctx
+    , end : ctx
+    , tagged : List ( tag, String )
+    }
 
 
 
@@ -95,10 +108,15 @@ fromArray array =
 
 {-| Shift the buffer focues without changing the contents.
 -}
+refocus : Int -> Int -> TextBuffer -> TextBuffer
 refocus row col buffer =
-    GapBuffer.updateFocus row
-        (\rowBuffer -> GapBuffer.updateFocus col identity rowBuffer)
-        buffer
+    let
+        lines =
+            GapBuffer.updateFocus row
+                (\rowBuffer -> GapBuffer.updateFocus col identity rowBuffer)
+                buffer.lines
+    in
+    { buffer | lines = lines }
 
 
 
@@ -107,84 +125,100 @@ refocus row col buffer =
 
 breakLine : Int -> Int -> TextBuffer -> TextBuffer
 breakLine row col buffer =
-    case GapBuffer.getFocus row buffer of
-        ( _, Nothing ) ->
-            buffer
+    let
+        lines =
+            case GapBuffer.getFocus row buffer.lines of
+                ( _, Nothing ) ->
+                    buffer.lines
 
-        ( focussedBuffer, Just rowBuffer ) ->
-            let
-                lineBeforeCursor =
-                    GapBuffer.slice 0 col rowBuffer
-                        |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                ( focussedBuffer, Just rowBuffer ) ->
+                    let
+                        lineBeforeCursor =
+                            GapBuffer.slice 0 col rowBuffer
+                                |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
 
-                lineAfterCursor =
-                    GapBuffer.slice col rowBuffer.length rowBuffer
-                        |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
-            in
-            focussedBuffer
-                |> GapBuffer.setFocus row lineBeforeCursor
-                |> GapBuffer.insertAtFocus (row + 1) lineAfterCursor
+                        lineAfterCursor =
+                            GapBuffer.slice col rowBuffer.length rowBuffer
+                                |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                    in
+                    focussedBuffer
+                        |> GapBuffer.setFocus row lineBeforeCursor
+                        |> GapBuffer.insertAtFocus (row + 1) lineAfterCursor
+    in
+    { buffer | lines = lines }
 
 
 insertCharAt : Char -> Int -> Int -> TextBuffer -> TextBuffer
 insertCharAt char row col buffer =
-    GapBuffer.updateFocus row
-        (\rowBuffer -> GapBuffer.insertAtFocus col char rowBuffer)
-        buffer
+    let
+        lines =
+            GapBuffer.updateFocus row
+                (\rowBuffer -> GapBuffer.insertAtFocus col char rowBuffer)
+                buffer.lines
+    in
+    { buffer | lines = lines }
 
 
 deleteCharBefore : Int -> Int -> TextBuffer -> TextBuffer
 deleteCharBefore row col buffer =
-    if isFirstColumn col && isFirstLine row then
-        buffer
+    let
+        lines =
+            if isFirstColumn col && isFirstLine row then
+                buffer.lines
 
-    else if isFirstColumn col then
-        case GapBuffer.getFocus row buffer of
-            ( _, Nothing ) ->
-                buffer
+            else if isFirstColumn col then
+                case GapBuffer.getFocus row buffer.lines of
+                    ( _, Nothing ) ->
+                        buffer.lines
 
-            ( focussedBuffer, Just rowBuffer ) ->
-                focussedBuffer
-                    |> GapBuffer.delete row
-                    |> GapBuffer.updateFocus (row - 1)
-                        (\prevRowBuffer ->
-                            Array.append
-                                (GapBuffer.slice 0 prevRowBuffer.length prevRowBuffer)
-                                (GapBuffer.slice 0 rowBuffer.length rowBuffer)
-                                |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
-                        )
+                    ( focussedBuffer, Just rowBuffer ) ->
+                        focussedBuffer
+                            |> GapBuffer.delete row
+                            |> GapBuffer.updateFocus (row - 1)
+                                (\prevRowBuffer ->
+                                    Array.append
+                                        (GapBuffer.slice 0 prevRowBuffer.length prevRowBuffer)
+                                        (GapBuffer.slice 0 rowBuffer.length rowBuffer)
+                                        |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                                )
 
-    else
-        GapBuffer.updateFocus row
-            (\rowBuffer -> GapBuffer.delete (col - 1) rowBuffer)
-            buffer
+            else
+                GapBuffer.updateFocus row
+                    (\rowBuffer -> GapBuffer.delete (col - 1) rowBuffer)
+                    buffer.lines
+    in
+    { buffer | lines = lines }
 
 
 deleteCharAt : Int -> Int -> TextBuffer -> TextBuffer
 deleteCharAt row col buffer =
-    if isLastColumn buffer row col && isLastLine buffer row then
-        buffer
+    let
+        lines =
+            if isLastColumn buffer row col && isLastLine buffer row then
+                buffer.lines
 
-    else if isLastColumn buffer row col then
-        case GapBuffer.getFocus (row + 1) buffer of
-            ( _, Nothing ) ->
-                buffer
+            else if isLastColumn buffer row col then
+                case GapBuffer.getFocus (row + 1) buffer.lines of
+                    ( _, Nothing ) ->
+                        buffer.lines
 
-            ( focussedBuffer, Just nextRowBuffer ) ->
-                focussedBuffer
-                    |> GapBuffer.delete (row + 1)
-                    |> GapBuffer.updateFocus row
-                        (\rowBuffer ->
-                            Array.append
-                                (GapBuffer.slice 0 rowBuffer.length rowBuffer)
-                                (GapBuffer.slice 0 nextRowBuffer.length nextRowBuffer)
-                                |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
-                        )
+                    ( focussedBuffer, Just nextRowBuffer ) ->
+                        focussedBuffer
+                            |> GapBuffer.delete (row + 1)
+                            |> GapBuffer.updateFocus row
+                                (\rowBuffer ->
+                                    Array.append
+                                        (GapBuffer.slice 0 rowBuffer.length rowBuffer)
+                                        (GapBuffer.slice 0 nextRowBuffer.length nextRowBuffer)
+                                        |> GapBuffer.fromArray rowBuffer.toZip rowBuffer.toArray
+                                )
 
-    else
-        GapBuffer.updateFocus row
-            (\rowBuffer -> GapBuffer.delete col rowBuffer)
-            buffer
+            else
+                GapBuffer.updateFocus row
+                    (\rowBuffer -> GapBuffer.delete col rowBuffer)
+                    buffer.lines
+    in
+    { buffer | lines = lines }
 
 
 
@@ -255,8 +289,8 @@ contents buffer =
 
 
 foldlSlice : (Int -> String -> acc -> acc) -> acc -> Int -> Int -> TextBuffer -> acc
-foldlSlice fn accum buffer =
-    GapBuffer.foldlSlice fn accum buffer
+foldlSlice fn accum from to buffer =
+    GapBuffer.foldlSlice fn accum from to buffer.lines
 
 
 
@@ -285,7 +319,7 @@ isLastColumn buffer line column =
 
 lastLine : TextBuffer -> Int
 lastLine buffer =
-    GapBuffer.length buffer - 1
+    GapBuffer.length buffer.lines - 1
 
 
 lastColumn : TextBuffer -> Int -> Int
@@ -307,7 +341,7 @@ nextLine buffer line =
 
 length : TextBuffer -> Int
 length buffer =
-    GapBuffer.length buffer
+    GapBuffer.length buffer.lines
 
 
 clampColumn : TextBuffer -> Int -> Int -> Int
@@ -337,7 +371,7 @@ clampColumn buffer line column =
 
 getLine : Int -> TextBuffer -> Maybe String
 getLine lineNum buffer =
-    GapBuffer.get lineNum buffer
+    GapBuffer.get lineNum buffer.lines
 
 
 lineLength : Int -> TextBuffer -> Int
@@ -363,8 +397,8 @@ foldlLines fn init buffer =
         (\_ line acc -> fn line acc)
         init
         0
-        (GapBuffer.length buffer)
-        buffer
+        (GapBuffer.length buffer.lines)
+        buffer.lines
 
 
 
