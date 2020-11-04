@@ -159,7 +159,7 @@ get idx buffer =
                 Array.get idx buffer.head
 
             else if idx == zip.at then
-                buffer.fromFocus Nothing zip.val |> Just
+                buffer.fromFocus (Array.get (zip.at - 1) buffer.head) zip.val |> Just
 
             else
                 Array.get (idx - zip.at - 1) zip.tail
@@ -210,7 +210,7 @@ slice from to buffer =
 
                 s2 =
                     if zip.at >= from && zip.at < to then
-                        Array.push (buffer.fromFocus Nothing zip.val) s1
+                        Array.push (buffer.fromFocus (Array.get (zip.at - 1) buffer.head) zip.val) s1
 
                     else
                         s1
