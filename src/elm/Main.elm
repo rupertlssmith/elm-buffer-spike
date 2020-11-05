@@ -688,16 +688,22 @@ viewLine : Int -> TextBuffer.Line Tag Tag -> Html Msg
 viewLine row line =
     let
         content =
-            line.tagged
-                |> List.unzip
-                |> Tuple.second
-                |> String.concat
+            List.map
+                (\( tag, str ) ->
+                    case tag of
+                        NormalText ->
+                            H.span [ HA.style "color" "black" ] [ H.text str ]
+
+                        QuotedText ->
+                            H.span [ HA.style "color" "green" ] [ H.text str ]
+                )
+                line.tagged
     in
     H.div
         [ HA.class "content-line"
         , HA.style "top" (String.fromFloat (toFloat row * config.lineHeight) ++ "px")
         ]
-        [ H.text content ]
+        content
 
 
 
