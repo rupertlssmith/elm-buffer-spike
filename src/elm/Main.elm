@@ -35,8 +35,8 @@ config =
     { fontSize = fontSize
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
-    , lineLength = 120
-    , numLines = 10000
+    , lineLength = 60
+    , numLines = 20
     , blinkInterval = 400
     }
 
@@ -666,7 +666,7 @@ keyedViewLines start end buffer =
     List.range start end
         |> List.foldr
             (\idx accum ->
-                case TextBuffer.getLine idx buffer of
+                case TextBuffer.getLine idx (TextBuffer.ripple buffer) of
                     Nothing ->
                         accum
 

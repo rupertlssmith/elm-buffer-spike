@@ -160,9 +160,15 @@ type RippleOutcome
     | Done
 
 
-ripple : (a -> a -> Int -> RippleOutcome) -> GapBuffer a b -> GapBuffer a b
-ripple rippleFn buffer =
-    buffer
+ripple : TextBuffer tag ctx -> TextBuffer tag ctx
+ripple buffer =
+    { buffer
+        | lines =
+            List.foldl
+                (\idx accum -> GapBuffer.getFocus idx accum |> Tuple.first)
+                buffer.lines
+                (List.range 0 buffer.lines.length)
+    }
 
 
 
