@@ -151,6 +151,21 @@ untagLine line =
 
 
 
+-- Rippling
+
+
+type RippleOutcome
+    = Continue
+    | Paused
+    | Done
+
+
+ripple : (a -> a -> Int -> RippleOutcome) -> GapBuffer a b -> GapBuffer a b
+ripple rippleFn buffer =
+    buffer
+
+
+
 -- Shift the buffer focus
 
 

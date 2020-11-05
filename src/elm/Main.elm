@@ -104,12 +104,8 @@ tagLineFn : TextBuffer.TagLineFn () ()
 tagLineFn charBuffer () =
     let
         untagged =
-            GapBuffer.foldrSlice
-                (\_ char accum -> char :: accum)
-                []
-                0
-                (GapBuffer.length charBuffer)
-                charBuffer
+            charBuffer
+                |> GapBuffer.indexedFoldr (\_ char accum -> char :: accum) []
                 |> String.fromList
     in
     ( [ ( (), untagged ) ], () )
