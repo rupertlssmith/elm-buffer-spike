@@ -8,6 +8,7 @@ import Browser.Dom exposing (Viewport)
 import Browser.Events
 import Css
 import Css.Global
+import GapBuffer
 import Html as H exposing (Attribute, Html)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -35,7 +36,7 @@ config =
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
     , lineLength = 120
-    , numLines = 10000
+    , numLines = 500
     , blinkInterval = 400
     }
 
@@ -51,7 +52,7 @@ main =
 
 
 type alias Model =
-    { buffer : TextBuffer
+    { buffer : TextBuffer Tag Tag
     , top : Float
     , height : Float
     , cursor : RowCol
@@ -71,7 +72,7 @@ type alias RowCol =
 
 
 init _ =
-    ( { buffer = TextBuffer.empty
+    ( { buffer = TextBuffer.empty initialCtx tagLineFn
       , top = 0
       , height = 0
       , cursor = { row = 0, col = 0 }
@@ -90,6 +91,58 @@ init _ =
     )
 
 
+
+-- Buffer setup.
+
+
+type Tag
+    = NormalText
+    | QuotedText
+
+
+initialCtx : Tag
+initialCtx =
+    NormalText
+
+
+tagLineFn : TextBuffer.TagLineFn Tag Tag
+tagLineFn charBuffer startCtx =
+    let
+        flip tag =
+            case tag of
+                NormalText ->
+                    QuotedText
+
+                QuotedText ->
+                    NormalText
+
+        pushTag ( tagAccum, lineAccum, ctx ) =
+            ( ( ctx, tagAccum |> List.reverse |> String.fromList ) :: lineAccum |> List.reverse, ctx )
+
+        ( tagged, endCtx ) =
+            GapBuffer.indexedFoldl
+                (\_ char ( tagAccum, lineAccum, ctx ) ->
+                    case ( char, ctx ) of
+                        ( '"', NormalText ) ->
+                            ( [ char ], ( ctx, tagAccum |> List.reverse |> String.fromList ) :: lineAccum, QuotedText )
+
+                        ( '"', QuotedText ) ->
+                            ( [], ( ctx, char :: tagAccum |> List.reverse |> String.fromList ) :: lineAccum, NormalText )
+
+                        ( _, _ ) ->
+                            ( char :: tagAccum, lineAccum, ctx )
+                )
+                ( [], [], startCtx )
+                charBuffer
+                |> pushTag
+    in
+    ( tagged, endCtx )
+
+
+
+-- Events and event handling.
+
+
 subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize (\_ _ -> Resize)
@@ -99,7 +152,7 @@ subscriptions _ =
 
 type Msg
     = Scroll ScrollEvent
-    | RandomBuffer TextBuffer
+    | RandomBuffer (TextBuffer Tag Tag)
     | ContentViewPort (Result Browser.Dom.Error Viewport)
     | Resize
     | MoveUp
@@ -235,6 +288,7 @@ update msg model =
             ( model, Cmd.none )
                 |> andThen (insertChar char)
                 |> andThen (moveCursorColBy 1)
+                |> andThen rippleBuffer
                 |> andThen activity
 
         RemoveCharBefore ->
@@ -246,12 +300,14 @@ update msg model =
                 |> andThen backspace
                 |> andThen (cursorLeft lastColPrevRow)
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         RemoveCharAfter ->
             ( model, Cmd.none )
                 |> andThen delete
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         NewLine ->
@@ -260,6 +316,7 @@ update msg model =
                 |> andThen (moveCursorRowBy 1)
                 |> andThen (moveCursorColBy -model.cursor.col)
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         Blink posix ->
@@ -411,6 +468,13 @@ scrollIfNecessary model =
     in
     ( { model | scrollRow = newScrollRow }
     , scrollCmd
+    )
+
+
+rippleBuffer : Model -> ( Model, Cmd Msg )
+rippleBuffer model =
+    ( { model | buffer = TextBuffer.ripple model.buffer }
+    , Cmd.none
     )
 
 
@@ -608,7 +672,7 @@ viewContent model =
         ]
 
 
-keyedViewLines : Int -> Int -> TextBuffer -> Html Msg
+keyedViewLines : Int -> Int -> TextBuffer Tag Tag -> Html Msg
 keyedViewLines start end buffer =
     List.range start end
         |> List.foldr
@@ -624,20 +688,33 @@ keyedViewLines start end buffer =
         |> Keyed.node "div" []
 
 
-viewLine : Int -> String -> Html Msg
-viewLine row content =
-    H.div
-        [ HA.class "content-line"
-        , HA.style "top" (String.fromFloat (toFloat row * config.lineHeight) ++ "px")
-        ]
-        [ H.text content ]
-
-
-viewKeyedLine : Int -> String -> ( String, Html Msg )
+viewKeyedLine : Int -> TextBuffer.Line Tag Tag -> ( String, Html Msg )
 viewKeyedLine row content =
     ( String.fromInt row
     , Html.Lazy.lazy2 viewLine row content
     )
+
+
+viewLine : Int -> TextBuffer.Line Tag Tag -> Html Msg
+viewLine row line =
+    let
+        content =
+            List.map
+                (\( tag, str ) ->
+                    case tag of
+                        NormalText ->
+                            H.span [ HA.style "color" "black" ] [ H.text str ]
+
+                        QuotedText ->
+                            H.span [ HA.style "color" "green" ] [ H.text str ]
+                )
+                line.tagged
+    in
+    H.div
+        [ HA.class "content-line"
+        , HA.style "top" (String.fromFloat (toFloat row * config.lineHeight) ++ "px")
+        ]
+        content
 
 
 
@@ -737,7 +814,7 @@ keyToMsg keyEvent =
 -- Random buffer initialization.
 
 
-randomBuffer : Int -> Int -> Generator TextBuffer
+randomBuffer : Int -> Int -> Generator (TextBuffer Tag Tag)
 randomBuffer width length =
     let
         regex =
@@ -774,7 +851,7 @@ randomBuffer width length =
     in
     line 0 [] wordGenerator
         |> Random.Array.array length
-        |> Random.map TextBuffer.fromArray
+        |> Random.map (TextBuffer.fromArray initialCtx tagLineFn)
 
 
 lorumIpsum : String

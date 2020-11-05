@@ -3,7 +3,7 @@ module GapBuffer exposing
     , empty, fromArray, fromList
     , get, isEmpty, length, slice
     , getFocus, setFocus, insertAtFocus, updateFocus
-    , foldlSlice, foldrSlice
+    , foldlSlice, foldrSlice, indexedFoldl, indexedFoldr
     , delete
     )
 
@@ -28,7 +28,7 @@ module GapBuffer exposing
 
 # Iterate
 
-@docs foldlSlice, foldrSlice
+@docs foldlSlice, foldrSlice, indexedFoldl, indexedFoldr
 
 -}
 
@@ -330,7 +330,7 @@ delete idx buffer =
 -- Iterate
 
 
-{-| Iterates forward over a region of the `GapBuffer`.
+{-| Iterates forward over a region of the buffer.
 
 This is the most efficient way to extract and map data from the buffer. For
 example, you would use this when rendering the visible contents of a `GapBuffer`
@@ -353,7 +353,7 @@ foldlSlice fn acc from to buffer =
         (List.range from to)
 
 
-{-| Iterates backward over a region of the `GapBuffer`.
+{-| Iterates backward over a region of the buffer.
 
 This is the most efficient way to extract and map data from the buffer. For
 example, you would use this when rendering the visible contents of a `GapBuffer`
@@ -374,3 +374,49 @@ foldrSlice fn acc from to buffer =
         )
         acc
         (List.range from to)
+
+
+{-| Iterates forward over the whole buffer.
+
+This is the most efficient way to extract and map data from the buffer. For
+example, you would use this when rendering the visible contents of a `GapBuffer`
+to Html. The implementation does not create intermediate data structures to hold
+the extracted elements, and it only iterates over the range you specify.
+
+-}
+indexedFoldl : (Int -> a -> acc -> acc) -> acc -> GapBuffer a b -> acc
+indexedFoldl fn acc buffer =
+    List.foldl
+        (\idx resAcc ->
+            case get idx buffer of
+                Just val ->
+                    fn idx val resAcc
+
+                Nothing ->
+                    resAcc
+        )
+        acc
+        (List.range 0 buffer.length)
+
+
+{-| Iterates backward over the whole buffer.
+
+This is the most efficient way to extract and map data from the buffer. For
+example, you would use this when rendering the visible contents of a `GapBuffer`
+to Html. The implementation does not create intermediate data structures to hold
+the extracted elements, and it only iterates over the range you specify.
+
+-}
+indexedFoldr : (Int -> a -> acc -> acc) -> acc -> GapBuffer a b -> acc
+indexedFoldr fn acc buffer =
+    List.foldr
+        (\idx resAcc ->
+            case get idx buffer of
+                Just val ->
+                    fn idx val resAcc
+
+                Nothing ->
+                    resAcc
+        )
+        acc
+        (List.range 0 buffer.length)
