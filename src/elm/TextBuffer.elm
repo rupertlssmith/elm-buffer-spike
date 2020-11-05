@@ -142,8 +142,8 @@ untagLine line =
         (\( _, str ) accum ->
             List.foldr
                 (::)
-                (String.toList str)
                 accum
+                (String.toList str)
         )
         []
         line.tagged
