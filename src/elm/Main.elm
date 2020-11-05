@@ -52,7 +52,7 @@ main =
 
 
 type alias Model =
-    { buffer : TextBuffer () ()
+    { buffer : TextBuffer Tag Tag
     , top : Float
     , height : Float
     , cursor : RowCol
@@ -95,20 +95,48 @@ init _ =
 -- Buffer setup.
 
 
-initialCtx : ()
+type Tag
+    = NormalText
+    | QuotedText
+
+
+initialCtx : Tag
 initialCtx =
-    ()
+    NormalText
 
 
-tagLineFn : TextBuffer.TagLineFn () ()
-tagLineFn charBuffer () =
+tagLineFn : TextBuffer.TagLineFn Tag Tag
+tagLineFn charBuffer startCtx =
     let
-        untagged =
-            charBuffer
-                |> GapBuffer.indexedFoldr (\_ char accum -> char :: accum) []
-                |> String.fromList
+        flip tag =
+            case tag of
+                NormalText ->
+                    QuotedText
+
+                QuotedText ->
+                    NormalText
+
+        pushTag ( tagAccum, lineAccum, ctx ) =
+            ( ( ctx, tagAccum |> List.reverse |> String.fromList ) :: lineAccum |> List.reverse, ctx )
+
+        ( tagged, endCtx ) =
+            GapBuffer.indexedFoldl
+                (\_ char ( tagAccum, lineAccum, ctx ) ->
+                    case ( char, ctx ) of
+                        ( '"', NormalText ) ->
+                            ( [ char ], ( ctx, tagAccum |> List.reverse |> String.fromList ) :: lineAccum, QuotedText )
+
+                        ( '"', QuotedText ) ->
+                            ( [], ( ctx, char :: tagAccum |> List.reverse |> String.fromList ) :: lineAccum, NormalText )
+
+                        ( _, _ ) ->
+                            ( char :: tagAccum, lineAccum, ctx )
+                )
+                ( [], [], startCtx )
+                charBuffer
+                |> pushTag
     in
-    ( [ ( (), untagged ) ], () )
+    ( tagged, endCtx )
 
 
 
@@ -124,7 +152,7 @@ subscriptions _ =
 
 type Msg
     = Scroll ScrollEvent
-    | RandomBuffer (TextBuffer () ())
+    | RandomBuffer (TextBuffer Tag Tag)
     | ContentViewPort (Result Browser.Dom.Error Viewport)
     | Resize
     | MoveUp
@@ -633,7 +661,7 @@ viewContent model =
         ]
 
 
-keyedViewLines : Int -> Int -> TextBuffer () () -> Html Msg
+keyedViewLines : Int -> Int -> TextBuffer Tag Tag -> Html Msg
 keyedViewLines start end buffer =
     List.range start end
         |> List.foldr
@@ -649,14 +677,14 @@ keyedViewLines start end buffer =
         |> Keyed.node "div" []
 
 
-viewKeyedLine : Int -> TextBuffer.Line () () -> ( String, Html Msg )
+viewKeyedLine : Int -> TextBuffer.Line Tag Tag -> ( String, Html Msg )
 viewKeyedLine row content =
     ( String.fromInt row
     , Html.Lazy.lazy2 viewLine row content
     )
 
 
-viewLine : Int -> TextBuffer.Line () () -> Html Msg
+viewLine : Int -> TextBuffer.Line Tag Tag -> Html Msg
 viewLine row line =
     let
         content =
@@ -769,7 +797,7 @@ keyToMsg keyEvent =
 -- Random buffer initialization.
 
 
-randomBuffer : Int -> Int -> Generator (TextBuffer () ())
+randomBuffer : Int -> Int -> Generator (TextBuffer Tag Tag)
 randomBuffer width length =
     let
         regex =
