@@ -35,8 +35,8 @@ config =
     { fontSize = fontSize
     , lineHeightRatio = lineHeightRatio
     , lineHeight = (lineHeightRatio * fontSize) |> floor |> toFloat
-    , lineLength = 60
-    , numLines = 20
+    , lineLength = 120
+    , numLines = 500
     , blinkInterval = 400
     }
 
@@ -288,6 +288,7 @@ update msg model =
             ( model, Cmd.none )
                 |> andThen (insertChar char)
                 |> andThen (moveCursorColBy 1)
+                |> andThen rippleBuffer
                 |> andThen activity
 
         RemoveCharBefore ->
@@ -299,12 +300,14 @@ update msg model =
                 |> andThen backspace
                 |> andThen (cursorLeft lastColPrevRow)
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         RemoveCharAfter ->
             ( model, Cmd.none )
                 |> andThen delete
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         NewLine ->
@@ -313,6 +316,7 @@ update msg model =
                 |> andThen (moveCursorRowBy 1)
                 |> andThen (moveCursorColBy -model.cursor.col)
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         Blink posix ->
@@ -464,6 +468,13 @@ scrollIfNecessary model =
     in
     ( { model | scrollRow = newScrollRow }
     , scrollCmd
+    )
+
+
+rippleBuffer : Model -> ( Model, Cmd Msg )
+rippleBuffer model =
+    ( { model | buffer = TextBuffer.ripple model.buffer }
+    , Cmd.none
     )
 
 
@@ -666,7 +677,7 @@ keyedViewLines start end buffer =
     List.range start end
         |> List.foldr
             (\idx accum ->
-                case TextBuffer.getLine idx (TextBuffer.ripple buffer) of
+                case TextBuffer.getLine idx buffer of
                     Nothing ->
                         accum
 
