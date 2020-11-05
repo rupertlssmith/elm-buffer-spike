@@ -8,6 +8,7 @@ import Browser.Dom exposing (Viewport)
 import Browser.Events
 import Css
 import Css.Global
+import GapBuffer
 import Html as H exposing (Attribute, Html)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -71,7 +72,7 @@ type alias RowCol =
 
 
 init _ =
-    ( { buffer = TextBuffer.empty
+    ( { buffer = TextBuffer.empty initialCtx tagLineFn
       , top = 0
       , height = 0
       , cursor = { row = 0, col = 0 }
@@ -88,6 +89,34 @@ init _ =
         , Browser.Dom.focus "editor-main" |> Task.attempt (always NoOp)
         ]
     )
+
+
+
+-- Buffer setup.
+
+
+initialCtx : ()
+initialCtx =
+    ()
+
+
+tagLineFn : TextBuffer.TagLineFn () ()
+tagLineFn charBuffer () =
+    let
+        untagged =
+            GapBuffer.foldrSlice
+                (\_ char accum -> char :: accum)
+                []
+                0
+                (GapBuffer.length charBuffer)
+                charBuffer
+                |> String.fromList
+    in
+    ( [ ( (), untagged ) ], () )
+
+
+
+-- Events and event handling.
 
 
 subscriptions _ =
@@ -624,20 +653,27 @@ keyedViewLines start end buffer =
         |> Keyed.node "div" []
 
 
-viewLine : Int -> String -> Html Msg
-viewLine row content =
+viewKeyedLine : Int -> TextBuffer.Line () () -> ( String, Html Msg )
+viewKeyedLine row content =
+    ( String.fromInt row
+    , Html.Lazy.lazy2 viewLine row content
+    )
+
+
+viewLine : Int -> TextBuffer.Line () () -> Html Msg
+viewLine row line =
+    let
+        content =
+            line.tagged
+                |> List.unzip
+                |> Tuple.second
+                |> String.concat
+    in
     H.div
         [ HA.class "content-line"
         , HA.style "top" (String.fromFloat (toFloat row * config.lineHeight) ++ "px")
         ]
         [ H.text content ]
-
-
-viewKeyedLine : Int -> String -> ( String, Html Msg )
-viewKeyedLine row content =
-    ( String.fromInt row
-    , Html.Lazy.lazy2 viewLine row content
-    )
 
 
 
@@ -774,7 +810,7 @@ randomBuffer width length =
     in
     line 0 [] wordGenerator
         |> Random.Array.array length
-        |> Random.map TextBuffer.fromArray
+        |> Random.map (TextBuffer.fromArray initialCtx tagLineFn)
 
 
 lorumIpsum : String

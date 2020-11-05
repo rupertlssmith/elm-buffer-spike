@@ -51,20 +51,6 @@ type alias TextBuffer tag ctx =
     { lines : GapBuffer (Line tag ctx) (GapBuffer Char Char) }
 
 
-
---
---
--- charBufferToString : Maybe String -> GapBuffer Char Char -> String
--- charBufferToString prevLine charBuffer =
---     GapBuffer.foldrSlice
---         (\_ char accum -> char :: accum)
---         []
---         0
---         (GapBuffer.length charBuffer)
---         charBuffer
---         |> String.fromList
-
-
 empty : ctx -> TagLineFn tag ctx -> TextBuffer tag ctx
 empty initialCtx tagLineFn =
     { lines = GapBuffer.empty untagLine (tagLine initialCtx tagLineFn) }
@@ -95,10 +81,16 @@ fromArray initialCtx tagLineFn array =
         arrayOfCharBuffers =
             Array.map stringToCharBuffer array
 
-        ( _, rippledArray ) =
+        ( _, _, rippledArray ) =
             Array.foldl
-                (\charBuffer ( ctx, accum ) -> ( ctx, accum ))
-                ( initialCtx, Array.empty )
+                (\charBuffer ( ctx, maybePrevLine, accum ) ->
+                    let
+                        line =
+                            tagLine ctx tagLineFn maybePrevLine charBuffer
+                    in
+                    ( line.end, Just line, Array.push line accum )
+                )
+                ( initialCtx, Nothing, Array.empty )
                 arrayOfCharBuffers
     in
     { lines = GapBuffer.fromArray untagLine (tagLine initialCtx tagLineFn) rippledArray }
@@ -429,10 +421,16 @@ getLine lineNum buffer =
 
 lineLength : Int -> TextBuffer tag ctx -> Int
 lineLength lineNum buffer =
-    -- getLine lineNum buffer
-    --     |> Maybe.map String.length
-    --     |> Maybe.withDefault 0
-    0
+    let
+        llength line =
+            line.tagged
+                |> List.unzip
+                |> Tuple.second
+                |> List.foldl (String.length >> (+)) 0
+    in
+    getLine lineNum buffer
+        |> Maybe.map llength
+        |> Maybe.withDefault 0
 
 
 
