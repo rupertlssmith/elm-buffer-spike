@@ -189,7 +189,7 @@ ripple from to lines =
     ( List.foldl
         (\idx accum -> GapBuffer.getFocus idx accum |> Tuple.first)
         lines
-        (List.range from lines.length)
+        (List.range from to)
     , StoppedAt to
     )
 
