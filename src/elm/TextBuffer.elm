@@ -186,16 +186,64 @@ ripple :
     -> GapBuffer (Line tag ctx) (GapBuffer Char Char)
     -> ( GapBuffer (Line tag ctx) (GapBuffer Char Char), RippleOutcome )
 ripple from to lines =
-    ( List.foldl
-        (\idx accum -> GapBuffer.getFocus idx accum |> Tuple.first)
-        lines
-        (List.range from to)
-    , StoppedAt to
-    )
+    -- Get (from-1) as buffer item
+    -- For idx in from to to
+    -- -- Get idx as buffer item
+    -- -- Check if states match or not
+    -- -- If states match then done
+    -- -- If states do not match, then move focus to idx
+    -- Shift the buffer focus
+    let
+        maybeStartLine =
+            GapBuffer.get (from - 1)
+                lines
 
+        rippled =
+            List.foldl
+                (\idx { firstLine, maybePrevLine, buffer, outcome } ->
+                    case ( maybePrevLine, GapBuffer.get idx buffer ) of
+                        ( Just prevLine, Just currentLine ) ->
+                            let
+                                _ =
+                                    Debug.log "ripple"
+                                        { firstLine = firstLine
+                                        , prevLineEnd = prevLine.end
+                                        , currentLineStart = currentLine.start
+                                        }
+                            in
+                            if not firstLine && prevLine.end == currentLine.start then
+                                { firstLine = False
+                                , maybePrevLine = Just currentLine
+                                , buffer = buffer
+                                , outcome = Done
+                                }
 
+                            else
+                                let
+                                    focussedBuffer =
+                                        GapBuffer.getFocus idx buffer |> Tuple.first
+                                in
+                                { firstLine = False
+                                , maybePrevLine = GapBuffer.get idx focussedBuffer
+                                , buffer = focussedBuffer
+                                , outcome = StoppedAt idx
+                                }
 
--- Shift the buffer focus
+                        ( _, maybeCurLine ) ->
+                            { firstLine = False
+                            , maybePrevLine = maybeCurLine
+                            , buffer = GapBuffer.getFocus idx buffer |> Tuple.first
+                            , outcome = StoppedAt idx
+                            }
+                )
+                { firstLine = True
+                , maybePrevLine = maybeStartLine
+                , buffer = lines
+                , outcome = Done
+                }
+                (List.range from to)
+    in
+    ( rippled.buffer, rippled.outcome )
 
 
 {-| Shift the buffer focues without changing the contents.
