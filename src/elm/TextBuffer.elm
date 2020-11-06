@@ -41,6 +41,7 @@ module TextBuffer exposing (..)
 import Array exposing (Array)
 import GapBuffer exposing (GapBuffer)
 import Regex
+import Set exposing (Set)
 
 
 
@@ -48,12 +49,16 @@ import Regex
 
 
 type alias TextBuffer tag ctx =
-    { lines : GapBuffer (Line tag ctx) (GapBuffer Char Char) }
+    { lines : GapBuffer (Line tag ctx) (GapBuffer Char Char)
+    , ripples : Set Int
+    }
 
 
 empty : ctx -> TagLineFn tag ctx -> TextBuffer tag ctx
 empty initialCtx tagLineFn =
-    { lines = GapBuffer.empty untagLine (tagLine initialCtx tagLineFn) }
+    { lines = GapBuffer.empty untagLine (tagLine initialCtx tagLineFn)
+    , ripples = Set.empty
+    }
 
 
 
@@ -93,7 +98,9 @@ fromArray initialCtx tagLineFn array =
                 ( initialCtx, Nothing, Array.empty )
                 arrayOfCharBuffers
     in
-    { lines = GapBuffer.fromArray untagLine (tagLine initialCtx tagLineFn) rippledArray }
+    { lines = GapBuffer.fromArray untagLine (tagLine initialCtx tagLineFn) rippledArray
+    , ripples = Set.empty
+    }
 
 
 stringToCharBuffer : String -> GapBuffer Char Char
@@ -154,21 +161,25 @@ untagLine line =
 -- Rippling
 
 
-type RippleOutcome
-    = Continue
-    | Paused
-    | Done
-
-
-ripple : TextBuffer tag ctx -> TextBuffer tag ctx
-ripple buffer =
-    { buffer
-        | lines =
-            List.foldl
-                (\idx accum -> GapBuffer.getFocus idx accum |> Tuple.first)
+rippleTo : Int -> TextBuffer tag ctx -> TextBuffer tag ctx
+rippleTo to buffer =
+    let
+        rippledBuffer =
+            Set.foldl
+                (\from accum ->
+                    ripple from to accum
+                )
                 buffer.lines
-                (List.range 0 buffer.lines.length)
-    }
+                buffer.ripples
+    in
+    { buffer | lines = rippledBuffer, ripples = Set.empty }
+
+
+ripple from to lines =
+    List.foldl
+        (\idx accum -> GapBuffer.getFocus idx accum |> Tuple.first)
+        lines
+        (List.range from lines.length)
 
 
 
@@ -214,7 +225,10 @@ breakLine row col buffer =
                         |> GapBuffer.setFocus row lineBeforeCursor
                         |> GapBuffer.insertAtFocus (row + 1) lineAfterCursor
     in
-    { buffer | lines = lines }
+    { buffer
+        | lines = lines
+        , ripples = Set.insert row buffer.ripples
+    }
 
 
 insertCharAt : Char -> Int -> Int -> TextBuffer tag ctx -> TextBuffer tag ctx
@@ -225,23 +239,26 @@ insertCharAt char row col buffer =
                 (\rowBuffer -> GapBuffer.insertAtFocus col char rowBuffer)
                 buffer.lines
     in
-    { buffer | lines = lines }
+    { buffer
+        | lines = lines
+        , ripples = Set.insert row buffer.ripples
+    }
 
 
 deleteCharBefore : Int -> Int -> TextBuffer tag ctx -> TextBuffer tag ctx
 deleteCharBefore row col buffer =
     let
-        lines =
+        ( lines, ripples ) =
             if isFirstColumn col && isFirstLine row then
-                buffer.lines
+                ( buffer.lines, buffer.ripples )
 
             else if isFirstColumn col then
                 case GapBuffer.getFocus row buffer.lines of
                     ( _, Nothing ) ->
-                        buffer.lines
+                        ( buffer.lines, buffer.ripples )
 
                     ( focussedBuffer, Just rowBuffer ) ->
-                        focussedBuffer
+                        ( focussedBuffer
                             |> GapBuffer.delete row
                             |> GapBuffer.updateFocus (row - 1)
                                 (\prevRowBuffer ->
@@ -250,29 +267,36 @@ deleteCharBefore row col buffer =
                                         (GapBuffer.slice 0 rowBuffer.length rowBuffer)
                                         |> GapBuffer.fromArray rowBuffer.toFocus rowBuffer.fromFocus
                                 )
+                        , Set.insert (row - 1) buffer.ripples
+                        )
 
             else
-                GapBuffer.updateFocus row
+                ( GapBuffer.updateFocus row
                     (\rowBuffer -> GapBuffer.delete (col - 1) rowBuffer)
                     buffer.lines
+                , Set.insert row buffer.ripples
+                )
     in
-    { buffer | lines = lines }
+    { buffer
+        | lines = lines
+        , ripples = ripples
+    }
 
 
 deleteCharAt : Int -> Int -> TextBuffer tag ctx -> TextBuffer tag ctx
 deleteCharAt row col buffer =
     let
-        lines =
+        ( lines, ripples ) =
             if isLastColumn buffer row col && isLastLine buffer row then
-                buffer.lines
+                ( buffer.lines, buffer.ripples )
 
             else if isLastColumn buffer row col then
                 case GapBuffer.getFocus (row + 1) buffer.lines of
                     ( _, Nothing ) ->
-                        buffer.lines
+                        ( buffer.lines, buffer.ripples )
 
                     ( focussedBuffer, Just nextRowBuffer ) ->
-                        focussedBuffer
+                        ( focussedBuffer
                             |> GapBuffer.delete (row + 1)
                             |> GapBuffer.updateFocus row
                                 (\rowBuffer ->
@@ -281,13 +305,20 @@ deleteCharAt row col buffer =
                                         (GapBuffer.slice 0 nextRowBuffer.length nextRowBuffer)
                                         |> GapBuffer.fromArray rowBuffer.toFocus rowBuffer.fromFocus
                                 )
+                        , Set.insert row buffer.ripples
+                        )
 
             else
-                GapBuffer.updateFocus row
+                ( GapBuffer.updateFocus row
                     (\rowBuffer -> GapBuffer.delete col rowBuffer)
                     buffer.lines
+                , Set.insert row buffer.ripples
+                )
     in
-    { buffer | lines = lines }
+    { buffer
+        | lines = lines
+        , ripples = ripples
+    }
 
 
 

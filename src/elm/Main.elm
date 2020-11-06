@@ -473,7 +473,7 @@ scrollIfNecessary model =
 
 rippleBuffer : Model -> ( Model, Cmd Msg )
 rippleBuffer model =
-    ( { model | buffer = TextBuffer.ripple model.buffer }
+    ( { model | buffer = TextBuffer.rippleTo 0 model.buffer }
     , Cmd.none
     )
 
