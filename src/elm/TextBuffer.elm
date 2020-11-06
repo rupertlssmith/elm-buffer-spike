@@ -167,7 +167,7 @@ rippleTo to buffer =
         rippledBuffer =
             Set.foldl
                 (\from accum ->
-                    ripple from to accum
+                    ripple from to accum |> Tuple.first
                 )
                 buffer.lines
                 buffer.ripples
@@ -175,11 +175,23 @@ rippleTo to buffer =
     { buffer | lines = rippledBuffer, ripples = Set.empty }
 
 
+type RippleOutcome
+    = Done
+    | StoppedAt Int
+
+
+ripple :
+    Int
+    -> Int
+    -> GapBuffer (Line tag ctx) (GapBuffer Char Char)
+    -> ( GapBuffer (Line tag ctx) (GapBuffer Char Char), RippleOutcome )
 ripple from to lines =
-    List.foldl
+    ( List.foldl
         (\idx accum -> GapBuffer.getFocus idx accum |> Tuple.first)
         lines
         (List.range from lines.length)
+    , StoppedAt to
+    )
 
 
 
