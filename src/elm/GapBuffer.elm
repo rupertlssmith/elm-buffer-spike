@@ -350,27 +350,14 @@ ripple :
 ripple from to contFn lines =
     let
         focussedBuffer =
-            focusAt (Debug.log "ripple from" from) lines
+            focusAt from lines
     in
     case focussedBuffer.zip of
         Nothing ->
-            let
-                _ =
-                    Debug.log "ripple" ("Done as no zip at " ++ String.fromInt from)
-            in
             ( lines, Done )
 
         Just zip ->
             if zip.at /= from then
-                let
-                    _ =
-                        Debug.log "ripple"
-                            ("Done as no (zip.at) "
-                                ++ String.fromInt zip.at
-                                ++ " /= (from) "
-                                ++ String.fromInt from
-                            )
-                in
                 ( lines, Done )
 
             else
@@ -382,12 +369,7 @@ ripple from to contFn lines =
                             contFn
                             lines.toFocus
                             lines.fromFocus
-                            (Debug.log "ripple prevLine"
-                                (lines.fromFocus
-                                    (Array.get (from - 1) focussedBuffer.head |> Debug.log ("line at (from) " ++ String.fromInt from ++ "- 1"))
-                                    zip.val
-                                )
-                            )
+                            (lines.fromFocus (Array.get (from - 1) focussedBuffer.head) zip.val)
                             zip.tail
                 in
                 ( { focussedBuffer
@@ -427,10 +409,6 @@ rippleTail idx to contFn toFocus fromFocus prevLine tail =
     else
         case Array.get idx tail of
             Nothing ->
-                let
-                    _ =
-                        Debug.log "rippleTail" ("Done as no val at " ++ String.fromInt idx)
-                in
                 ( tail, Done )
 
             Just currentLine ->
@@ -449,10 +427,6 @@ rippleTail idx to contFn toFocus fromFocus prevLine tail =
                         (Array.set idx rippledLine tail)
 
                 else
-                    let
-                        _ =
-                            Debug.log "rippleTail" "Done as contFn check was False."
-                    in
                     ( tail, Done )
 
 

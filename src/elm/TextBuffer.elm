@@ -190,11 +190,8 @@ rippleTo to buffer =
                 )
                 ( buffer.lines, -1, Set.empty )
                 buffer.ripples
-
-        _ =
-            Debug.log "start" { to = to, ripples = buffer.ripples }
     in
-    { buffer | lines = rippledBuffer, ripples = Debug.log "end" pendingRipples }
+    { buffer | lines = rippledBuffer, ripples = pendingRipples }
 
 
 {-| Shift the buffer focues without changing the contents.
