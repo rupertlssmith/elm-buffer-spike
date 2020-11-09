@@ -3,6 +3,7 @@ module GapBuffer exposing
     , empty, fromArray, fromList
     , get, isEmpty, length, slice
     , getFocus, setFocus, insertAtFocus, updateFocus, focusAt
+    , RippleOutcome, ripple
     , foldlSlice, foldrSlice, indexedFoldl, indexedFoldr
     , delete
     )
@@ -24,6 +25,11 @@ module GapBuffer exposing
 # Manipulate
 
 @docs getFocus, setFocus, insertAtFocus, updateFocus, focusAt
+
+
+# Rippling
+
+@docs RippleOutcome, ripple
 
 
 # Iterate
@@ -324,6 +330,95 @@ delete idx buffer =
                             )
                 , length = buffer.length - 1
             }
+
+
+
+-- Rippling
+
+
+type RippleOutcome
+    = Done
+    | StoppedAt Int
+
+
+ripple :
+    Int
+    -> Int
+    -> (a -> a -> Bool)
+    -> GapBuffer a b
+    -> ( GapBuffer a b, RippleOutcome )
+ripple from to contFn lines =
+    let
+        focussedBuffer =
+            focusAt from lines
+    in
+    case focussedBuffer.zip of
+        Nothing ->
+            ( lines, Done )
+
+        Just zip ->
+            if zip.at /= from then
+                ( lines, Done )
+
+            else
+                let
+                    ( rippledTail, outcome ) =
+                        rippleTail
+                            0
+                            (to - zip.at)
+                            contFn
+                            lines.toFocus
+                            lines.fromFocus
+                            (lines.fromFocus (Array.get (from - 1) lines.head) zip.val)
+                            zip.tail
+                in
+                ( { focussedBuffer
+                    | zip =
+                        Just
+                            { at = zip.at
+                            , val = zip.val
+                            , tail = rippledTail
+                            }
+                  }
+                , outcome
+                )
+
+
+rippleTail :
+    Int
+    -> Int
+    -> (a -> a -> Bool)
+    -> (a -> b)
+    -> (Maybe a -> b -> a)
+    -> a
+    -> Array a
+    -> ( Array a, RippleOutcome )
+rippleTail idx to contFn toFocus fromFocus prevLine tail =
+    if idx == to then
+        ( tail, StoppedAt idx )
+
+    else
+        case Array.get idx tail of
+            Nothing ->
+                ( tail, Done )
+
+            Just currentLine ->
+                if contFn prevLine currentLine then
+                    let
+                        rippledLine =
+                            toFocus currentLine
+                                |> fromFocus (Just prevLine)
+                    in
+                    rippleTail (idx + 1)
+                        to
+                        contFn
+                        toFocus
+                        fromFocus
+                        rippledLine
+                        (Array.set idx rippledLine tail)
+
+                else
+                    ( tail, Done )
 
 
 
