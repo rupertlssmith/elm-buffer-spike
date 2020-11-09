@@ -452,14 +452,18 @@ scrollIfNecessary model =
             if model.cursor.row > (model.scrollRow + model.linesPerPage - 3) then
                 let
                     topRow =
-                        model.cursor.row - model.linesPerPage + 3
+                        min
+                            (TextBuffer.lastLine model.buffer - model.linesPerPage)
+                            (model.cursor.row - model.linesPerPage + 3)
                 in
                 ( topRow, scrollTo ((topRow |> toFloat) * config.lineHeight - model.bottomOffset) )
 
             else if model.cursor.row < (model.scrollRow + 2) then
                 let
                     topRow =
-                        model.cursor.row - 2
+                        max
+                            0
+                            (model.cursor.row - 2)
                 in
                 ( topRow, scrollTo ((topRow |> toFloat) * config.lineHeight) )
 
