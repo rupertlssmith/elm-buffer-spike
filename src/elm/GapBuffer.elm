@@ -2,7 +2,7 @@ module GapBuffer exposing
     ( GapBuffer
     , empty, fromArray, fromList
     , get, isEmpty, length, slice
-    , getFocus, setFocus, insertAtFocus, updateFocus
+    , getFocus, setFocus, insertAtFocus, updateFocus, focusAt
     , foldlSlice, foldrSlice, indexedFoldl, indexedFoldr
     , delete
     )
@@ -23,7 +23,7 @@ module GapBuffer exposing
 
 # Manipulate
 
-@docs getFocus, setFocus, insertAtFocus, updateFocus
+@docs getFocus, setFocus, insertAtFocus, updateFocus, focusAt
 
 
 # Iterate
@@ -47,24 +47,6 @@ type alias GapBuffer a b =
     , toFocus : a -> b
     , fromFocus : Maybe a -> b -> a
     }
-
-
-zipAt : Int -> GapBuffer a b -> GapBuffer a b
-zipAt idx buffer =
-    if idx < 0 || idx >= buffer.length then
-        buffer
-
-    else
-        case buffer.zip of
-            Nothing ->
-                rezip idx buffer
-
-            Just zip ->
-                if zip.at == idx then
-                    buffer
-
-                else
-                    rezip idx buffer
 
 
 rezip : Int -> GapBuffer a b -> GapBuffer a b
@@ -247,7 +229,7 @@ setFocus : Int -> b -> GapBuffer a b -> GapBuffer a b
 setFocus idx val buffer =
     let
         rezipped =
-            zipAt idx buffer
+            focusAt idx buffer
     in
     { rezipped | zip = rezipped.zip |> Maybe.map (\zip -> { zip | val = val }) }
 
@@ -282,7 +264,7 @@ getFocus : Int -> GapBuffer a b -> ( GapBuffer a b, Maybe b )
 getFocus idx buffer =
     let
         rezipped =
-            zipAt idx buffer
+            focusAt idx buffer
     in
     ( rezipped, rezipped.zip |> Maybe.map .val )
 
@@ -299,9 +281,27 @@ updateFocus : Int -> (b -> b) -> GapBuffer a b -> GapBuffer a b
 updateFocus idx fn buffer =
     let
         rezipped =
-            zipAt idx buffer
+            focusAt idx buffer
     in
     { rezipped | zip = rezipped.zip |> Maybe.map (\zip -> { zip | val = fn zip.val }) }
+
+
+focusAt : Int -> GapBuffer a b -> GapBuffer a b
+focusAt idx buffer =
+    if idx < 0 || idx >= buffer.length then
+        buffer
+
+    else
+        case buffer.zip of
+            Nothing ->
+                rezip idx buffer
+
+            Just zip ->
+                if zip.at == idx then
+                    buffer
+
+                else
+                    rezip idx buffer
 
 
 delete : Int -> GapBuffer a b -> GapBuffer a b
