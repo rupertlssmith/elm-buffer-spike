@@ -167,36 +167,26 @@ rippleTo to buffer =
         ( rippledBuffer, _, pendingRipples ) =
             Set.foldl
                 (\from ( accum, marker, set ) ->
-                    let
-                        ( nextBuffer, outcome ) =
-                            --if (marker == -1) || from <= marker then
-                            GapBuffer.ripple from
-                                to
-                                (\prevLine line ->
-                                    -- let
-                                    --     _ =
-                                    --         Debug.log "contFn"
-                                    --             { prevLineEnd = prevLine.end
-                                    --             , lineStart = line.start
-                                    --             }
-                                    -- in
-                                    prevLine.end /= line.start
-                                )
-                                accum
+                    if (marker == -1) || from <= marker then
+                        let
+                            ( nextBuffer, outcome ) =
+                                GapBuffer.ripple from
+                                    to
+                                    (\prevLine line -> prevLine.end /= line.start)
+                                    accum
+                        in
+                        case outcome of
+                            GapBuffer.Done ->
+                                ( nextBuffer, marker, set )
 
-                        -- else
-                        --     ( accum, GapBuffer.Done )
-                    in
-                    case Debug.log "outcome" outcome of
-                        GapBuffer.Done ->
-                            ( nextBuffer, marker, set )
+                            GapBuffer.StoppedAt end ->
+                                ( nextBuffer, max marker end, Set.insert end set )
 
-                        GapBuffer.StoppedAt end ->
-                            let
-                                newMarker =
-                                    max marker end
-                            in
-                            ( nextBuffer, newMarker, Set.insert end set )
+                    else if from > to then
+                        ( accum, marker, Set.insert from set )
+
+                    else
+                        ( accum, marker, set )
                 )
                 ( buffer.lines, -1, Set.empty )
                 buffer.ripples
