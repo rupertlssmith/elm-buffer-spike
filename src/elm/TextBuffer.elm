@@ -167,7 +167,7 @@ rippleTo to buffer =
         rippledBuffer =
             Set.foldl
                 (\from accum ->
-                    ripple from to accum |> Tuple.first
+                    ripple from to (\prevLine line -> prevLine.end == line.start) accum |> Tuple.first
                 )
                 buffer.lines
                 buffer.ripples
@@ -183,9 +183,10 @@ type RippleOutcome
 ripple :
     Int
     -> Int
-    -> GapBuffer (Line tag ctx) (GapBuffer Char Char)
-    -> ( GapBuffer (Line tag ctx) (GapBuffer Char Char), RippleOutcome )
-ripple from to lines =
+    -> (a -> a -> Bool)
+    -> GapBuffer a b
+    -> ( GapBuffer a b, RippleOutcome )
+ripple from to contFn lines =
     -- Get (from-1) as buffer item
     -- For idx in from to to
     -- -- Get idx as buffer item
@@ -203,15 +204,7 @@ ripple from to lines =
                 (\idx { firstLine, maybePrevLine, buffer, outcome } ->
                     case ( maybePrevLine, GapBuffer.get idx buffer ) of
                         ( Just prevLine, Just currentLine ) ->
-                            let
-                                _ =
-                                    Debug.log "ripple"
-                                        { firstLine = firstLine
-                                        , prevLineEnd = prevLine.end
-                                        , currentLineStart = currentLine.start
-                                        }
-                            in
-                            if not firstLine && prevLine.end == currentLine.start then
+                            if not firstLine && contFn prevLine currentLine then
                                 { firstLine = False
                                 , maybePrevLine = Just currentLine
                                 , buffer = buffer
