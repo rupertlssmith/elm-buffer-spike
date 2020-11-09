@@ -108,14 +108,6 @@ initialCtx =
 tagLineFn : TextBuffer.TagLineFn Tag Tag
 tagLineFn charBuffer startCtx =
     let
-        flip tag =
-            case tag of
-                NormalText ->
-                    QuotedText
-
-                QuotedText ->
-                    NormalText
-
         pushTag ( tagAccum, lineAccum, ctx ) =
             ( ( ctx, tagAccum |> List.reverse |> String.fromList ) :: lineAccum |> List.reverse, ctx )
 
@@ -217,6 +209,7 @@ update msg model =
                 |> andThen (moveCursorRowBy 1)
                 --|> andThen refocusBuffer
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         MoveLeft ->
@@ -235,6 +228,7 @@ update msg model =
                 |> andThen cursorRight
                 --|> andThen refocusBuffer
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         PageUp ->
@@ -249,6 +243,7 @@ update msg model =
                 |> andThen (moveCursorRowBy model.linesPerPage)
                 --|> andThen refocusBuffer
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         LineHome ->
@@ -282,6 +277,7 @@ update msg model =
                         }
                     )
                 |> andThen scrollIfNecessary
+                |> andThen rippleBuffer
                 |> andThen activity
 
         InsertChar char ->

@@ -164,16 +164,47 @@ untagLine line =
 rippleTo : Int -> TextBuffer tag ctx -> TextBuffer tag ctx
 rippleTo to buffer =
     let
-        rippledBuffer =
+        ( rippledBuffer, _, pendingRipples ) =
             Set.foldl
-                (\from accum ->
-                    GapBuffer.ripple from to (\prevLine line -> prevLine.end /= line.start) accum
-                        |> Tuple.first
+                (\from ( accum, marker, set ) ->
+                    let
+                        ( nextBuffer, outcome ) =
+                            --if (marker == -1) || from <= marker then
+                            GapBuffer.ripple from
+                                to
+                                (\prevLine line ->
+                                    let
+                                        _ =
+                                            Debug.log "contFn"
+                                                { prevLineEnd = prevLine.end
+                                                , lineStart = line.start
+                                                }
+                                    in
+                                    prevLine.end /= line.start
+                                )
+                                accum
+
+                        -- else
+                        --     ( accum, GapBuffer.Done )
+                    in
+                    case Debug.log "outcome" outcome of
+                        GapBuffer.Done ->
+                            ( nextBuffer, marker, set )
+
+                        GapBuffer.StoppedAt end ->
+                            let
+                                newMarker =
+                                    max marker end
+                            in
+                            ( nextBuffer, newMarker, Set.insert end set )
                 )
-                buffer.lines
+                ( buffer.lines, -1, Set.empty )
                 buffer.ripples
+
+        _ =
+            Debug.log "start" { to = to, ripples = buffer.ripples }
     in
-    { buffer | lines = rippledBuffer, ripples = Set.empty }
+    { buffer | lines = rippledBuffer, ripples = Debug.log "end" pendingRipples }
 
 
 {-| Shift the buffer focues without changing the contents.

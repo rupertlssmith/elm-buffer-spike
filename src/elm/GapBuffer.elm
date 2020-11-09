@@ -3,7 +3,7 @@ module GapBuffer exposing
     , empty, fromArray, fromList
     , get, isEmpty, length, slice
     , getFocus, setFocus, insertAtFocus, updateFocus, focusAt
-    , RippleOutcome, ripple
+    , RippleOutcome(..), ripple
     , foldlSlice, foldrSlice, indexedFoldl, indexedFoldr
     , delete
     )
@@ -350,14 +350,27 @@ ripple :
 ripple from to contFn lines =
     let
         focussedBuffer =
-            focusAt from lines
+            focusAt (Debug.log "ripple from" from) lines
     in
     case focussedBuffer.zip of
         Nothing ->
+            let
+                _ =
+                    Debug.log "ripple" ("Done as no zip at " ++ String.fromInt from)
+            in
             ( lines, Done )
 
         Just zip ->
             if zip.at /= from then
+                let
+                    _ =
+                        Debug.log "ripple"
+                            ("Done as no (zip.at) "
+                                ++ String.fromInt zip.at
+                                ++ " /= (from) "
+                                ++ String.fromInt from
+                            )
+                in
                 ( lines, Done )
 
             else
@@ -369,7 +382,12 @@ ripple from to contFn lines =
                             contFn
                             lines.toFocus
                             lines.fromFocus
-                            (lines.fromFocus (Array.get (from - 1) lines.head) zip.val)
+                            (Debug.log "ripple prevLine"
+                                (lines.fromFocus
+                                    (Array.get (from - 1) focussedBuffer.head |> Debug.log ("line at (from) " ++ String.fromInt from ++ "- 1"))
+                                    zip.val
+                                )
+                            )
                             zip.tail
                 in
                 ( { focussedBuffer
@@ -380,7 +398,12 @@ ripple from to contFn lines =
                             , tail = rippledTail
                             }
                   }
-                , outcome
+                , case outcome of
+                    Done ->
+                        Done
+
+                    StoppedAt stop ->
+                        stop + zip.at |> StoppedAt
                 )
 
 
@@ -400,6 +423,10 @@ rippleTail idx to contFn toFocus fromFocus prevLine tail =
     else
         case Array.get idx tail of
             Nothing ->
+                let
+                    _ =
+                        Debug.log "rippleTail" ("Done as no val at " ++ String.fromInt idx)
+                in
                 ( tail, Done )
 
             Just currentLine ->
@@ -418,6 +445,10 @@ rippleTail idx to contFn toFocus fromFocus prevLine tail =
                         (Array.set idx rippledLine tail)
 
                 else
+                    let
+                        _ =
+                            Debug.log "rippleTail" "Done as contFn check was False."
+                    in
                     ( tail, Done )
 
 
