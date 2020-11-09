@@ -403,7 +403,11 @@ ripple from to contFn lines =
                         Done
 
                     StoppedAt stop ->
-                        stop + zip.at |> StoppedAt
+                        if stop + zip.at >= lines.length - 1 then
+                            Done
+
+                        else
+                            stop + zip.at |> StoppedAt
                 )
 
 

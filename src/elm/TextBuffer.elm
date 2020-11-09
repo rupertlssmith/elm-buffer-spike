@@ -173,13 +173,13 @@ rippleTo to buffer =
                             GapBuffer.ripple from
                                 to
                                 (\prevLine line ->
-                                    let
-                                        _ =
-                                            Debug.log "contFn"
-                                                { prevLineEnd = prevLine.end
-                                                , lineStart = line.start
-                                                }
-                                    in
+                                    -- let
+                                    --     _ =
+                                    --         Debug.log "contFn"
+                                    --             { prevLineEnd = prevLine.end
+                                    --             , lineStart = line.start
+                                    --             }
+                                    -- in
                                     prevLine.end /= line.start
                                 )
                                 accum

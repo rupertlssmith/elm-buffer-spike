@@ -449,7 +449,7 @@ scrollIfNecessary model =
                 let
                     topRow =
                         min
-                            (TextBuffer.lastLine model.buffer - model.linesPerPage)
+                            (TextBuffer.lastLine model.buffer - model.linesPerPage + 1)
                             (model.cursor.row - model.linesPerPage + 3)
                 in
                 ( topRow, scrollTo ((topRow |> toFloat) * config.lineHeight - model.bottomOffset) )
